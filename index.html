@@ -77,7 +77,25 @@ const app=initializeApp(firebaseConfig);
 const auth=getAuth(app);
 let db;try{db=initializeFirestore(app,{localCache:persistentLocalCache()})}catch(e){db=initializeFirestore(app,{})}
 
-const TYPES={"Vidange":{km:15000,m:12},"Pneus":{km:40000,m:0},"Freins":{km:30000,m:24},"Contrôle technique":{km:0,m:24},"Courroie de distribution":{km:100000,m:60},"Batterie":{km:0,m:60},"Autre":{km:0,m:0}};
+const TYPES={
+"Vidange Moteur + Filtre à Huile":{km:10000,m:12},
+"Filtre à Air":{km:20000,m:24},
+"Filtre d'Habitacle (Pollens)":{km:15000,m:12},
+"Filtre à Carburant (Gazole/Essence)":{km:40000,m:48},
+"Bougies d'allumage":{km:60000,m:48},
+"Bougies de préchauffage":{km:100000,m:0},
+"Liquide de Frein (Purge)":{km:0,m:24},
+"Liquide de Refroidissement":{km:60000,m:48},
+"Courroie de Distribution + Pompe à eau":{km:100000,m:60},
+"Courroie d'Accessoires":{km:100000,m:60},
+"Plaquettes de Frein":{km:30000,m:24},
+"Disques de Frein":{km:60000,m:0},
+"Vidange Boîte de Vitesses":{km:60000,m:48},
+"Contrôle Technique":{km:0,m:24},
+"Autre (préciser en note)":{km:0,m:0}
+};
+const ALIAS={"Vidange":"Vidange Moteur + Filtre à Huile","Freins":"Plaquettes de Frein","Courroie de distribution":"Courroie de Distribution + Pompe à eau","Contrôle technique":"Contrôle Technique","Autre":"Autre (préciser en note)"};
+const norm=t=>ALIAS[t]||t;
 let S={v:[],e:[]},sel=null,ref=null,unsub=null,user=null;
 try{sel=localStorage.getItem("sel")}catch(e){}
 const $=id=>document.getElementById(id);
@@ -91,7 +109,7 @@ const pick=id=>{sel=id;try{localStorage.setItem("sel",id||"")}catch(e){}};
 
 function status(v,t){
  const cfg=TYPES[t];if(!cfg.km&&!cfg.m)return null;
- const last=S.e.filter(x=>x.vid===v.id&&x.type===t).sort((a,b)=>b.date.localeCompare(a.date))[0];
+ const last=S.e.filter(x=>x.vid===v.id&&norm(x.type)===t).sort((a,b)=>b.date.localeCompare(a.date))[0];
  if(!last)return{c:"none",txt:"Jamais fait",sub:"Ajoute le dernier entretien"};
  let left=[],level=0;
  if(cfg.km&&last.km!=null){const r=last.km+cfg.km-v.km;left.push(r>=0?"dans "+fmt(r)+" km":"dépassé de "+fmt(-r)+" km");level=Math.max(level,r<0?2:r<cfg.km*.1?1:0)}
@@ -111,7 +129,7 @@ function render(){
  if(!v){m.innerHTML=chips+`<div class="empty">Aucun véhicule.<br>Ajoute le premier avec « + Véhicule ».</div>`+foot;return}
  const ents=S.e.filter(x=>x.vid===v.id).sort((a,b)=>b.date.localeCompare(a.date));
  const total=ents.reduce((s,x)=>s+(+x.cost||0),0);
- const rows=Object.keys(TYPES).map(t=>({t,s:status(v,t)})).filter(x=>x.s);
+ const rows=Object.keys(TYPES).map(t=>({t,s:status(v,t)})).filter(x=>x.s).sort((a,b)=>["bad","warn","none","ok"].indexOf(a.s.c)-["bad","warn","none","ok"].indexOf(b.s.c));
  m.innerHTML=chips+`
  <div class="card km"><div><span class="mute">Kilométrage</span><br><b>${fmt(v.km)} km</b></div><button class="btn ghost" id="upKm">Mettre à jour</button></div>
  <h2>Suivi</h2>
