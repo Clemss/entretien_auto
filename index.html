@@ -60,7 +60,8 @@ input,select{width:100%;padding:10px;border:1.5px solid var(--line);border-radiu
 <dialog id="dE"><h2>Nouvel entretien</h2>
 <label>Date</label><input id="ed" type="date">
 <label>Kilométrage</label><input id="ek" type="number" inputmode="numeric">
-<label>Entretiens effectués (coche, coût en option)</label><div id="etl"></div>
+<label>Entretiens effectués</label><div id="etl"></div>
+<label>Coût total (€)</label><input id="etot" type="number" inputmode="decimal" placeholder="0">
 <label>Note (pour tous)</label><input id="en" placeholder="Garage, pièces...">
 <div class="row" style="margin-top:16px;justify-content:flex-end"><button class="btn ghost" data-close>Annuler</button><button class="btn" id="saveE">Enregistrer</button></div></dialog>
 
@@ -213,18 +214,17 @@ document.addEventListener("click",async e=>{
  if(t.id==="saveV"){const n=$("vn").value.trim();if(!n){$("vn").focus();return}
   const v={id:uid(),name:n,km:+$("vk").value||0};S.v.push(v);pick(v.id);save();$("dV").close();render()}
  if(t.id==="upKm"){const k=prompt("Kilométrage actuel :",cur().km);if(k!==null&&k!==""&&+k>=0){cur().km=+k;save();render()}}
- if(t.id==="addE"){$("etl").innerHTML=Object.keys(TYPES).map((x,i)=>`<label class="pick"><input type="checkbox" id="ec${i}"><span>${esc(x)}</span><input type="number" inputmode="decimal" id="ep${i}" placeholder="€" aria-label="Coût"></label>`).join("");$("ed").value=today();$("ek").value=cur().km||"";$("en").value="";$("dE").showModal()}
+ if(t.id==="addE"){$("etl").innerHTML=Object.keys(TYPES).map((x,i)=>{const c=cfgOf(cur(),x);return (c.km||c.m||x.startsWith("Autre"))?`<label class="pick"><input type="checkbox" id="ec${i}"><span>${esc(x)}</span></label>`:""}).join("");$("ed").value=today();$("ek").value=cur().km||"";$("en").value="";$("etot").value="";$("dE").showModal()}
  if(t.id==="saveE"){const v=cur(),km=$("ek").value===""?null:+$("ek").value;
-  const TK=Object.keys(TYPES),ch=TK.map((x,i)=>({x,i})).filter(o=>$("ec"+o.i).checked);
+  const TK=Object.keys(TYPES),ch=TK.map((x,i)=>({x,i})).filter(o=>$("ec"+o.i)&&$("ec"+o.i).checked);
   if(!ch.length){alert("Coche au moins un entretien.");return}
-  ch.forEach(o=>S.e.push({id:uid()+o.i,vid:v.id,type:o.x,date:$("ed").value||today(),km,cost:+$("ep"+o.i).value||0,note:$("en").value.trim()}));
+  ch.forEach((o,j)=>S.e.push({id:uid()+o.i,vid:v.id,type:o.x,date:$("ed").value||today(),km,cost:j===0?(+$("etot").value||0):0,note:$("en").value.trim()}));
   if(km!=null&&km>v.km)v.km=km;save();$("dE").close();render()}
  if(t.dataset.del&&confirm("Supprimer cet entretien ?")){S.e=S.e.filter(x=>x.id!==t.dataset.del);save();render()}
  if(t.id==="delV"&&confirm("Supprimer ce véhicule et son historique ?")){const id=sel;S.v=S.v.filter(x=>x.id!==id);S.e=S.e.filter(x=>x.vid!==id);pick(S.v[0]?S.v[0].id:null);save();render()}
  if(t.id==="exp"){const b=new Blob([JSON.stringify(S,null,1)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="entretien-sauvegarde-"+today()+".json";document.body.appendChild(a);a.click();a.remove()}
  if(t.id==="impb")$("imp").click();
 });
-$("etl").addEventListener("input",e=>{const m=/^ep(\d+)$/.exec(e.target.id);if(m&&e.target.value)$("ec"+m[1]).checked=true});
 $("imp").addEventListener("change",async e=>{
  const f=e.target.files[0];e.target.value="";if(!f)return;
  try{const d=JSON.parse(await f.text());if(!Array.isArray(d.v)||!Array.isArray(d.e))throw 0;
