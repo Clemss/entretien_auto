@@ -60,7 +60,7 @@ input,select{width:100%;padding:10px;border:1.5px solid var(--line);border-radiu
 <label>Kilométrage actuel</label><input id="vk" type="number" inputmode="numeric" placeholder="85000">
 <div class="row" style="margin-top:16px;justify-content:flex-end"><button class="btn ghost" data-close>Annuler</button><button class="btn" id="saveV">Ajouter</button></div></dialog>
 
-<dialog id="dE"><h2>Nouvel entretien</h2>
+<dialog id="dE"><h2 id="eh">Nouvel entretien</h2>
 <label>Date</label><input id="ed" type="date">
 <label>Kilométrage</label><input id="ek" type="number" inputmode="numeric">
 <label>Entretiens effectués</label><div id="etl"></div>
@@ -124,6 +124,7 @@ const cfgOf=(v,t)=>(v.iv&&v.iv[t])||TYPES[t];
 const baseOf=t=>t.replace(/ \((Avant|Arrière)\)$/,"");
 let S={v:[],e:[]},sel=null,ref=null,unsub=null,user=null;
 try{sel=localStorage.getItem("sel")}catch(e){}
+let editG=null,editKeep=[],ready=false,last="{}";
 let open=true;try{open=localStorage.getItem("suiviOpen")!=="0"}catch(e){}
 const $=id=>document.getElementById(id);
 const fmt=n=>Number(n).toLocaleString("fr-FR");
@@ -131,7 +132,7 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 const cur=()=>S.v.find(v=>v.id===sel);
 const today=()=>new Date().toISOString().slice(0,10);
 const esc=s=>String(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const save=()=>{if(ref)setDoc(ref,S).catch(e=>alert("Erreur de sauvegarde : "+e.message))};
+const save=()=>{if(!ref)return;if(!ready){alert("Synchronisation avec le serveur en cours : rien n'a été modifié. Vérifie ta connexion et réessaie dans quelques secondes.");try{S=JSON.parse(last)}catch(e){}render();return}setDoc(ref,S).catch(e=>alert("Erreur de sauvegarde : "+e.message))};
 const pick=id=>{sel=id;try{localStorage.setItem("sel",id||"")}catch(e){}};
 
 function status(v,t){
@@ -150,7 +151,7 @@ function render(){
  const m=$("main");
  if(!user){m.innerHTML=`<div class="card" style="margin-top:20px"><p>Connecte-toi pour retrouver tes véhicules sur tous tes appareils.</p><button class="btn" id="login">Se connecter avec Google</button><div id="msg"></div></div>`;return}
  if(!cur()&&S.v[0])pick(S.v[0].id);
- const chips=`<div class="chips">`+S.v.map(v=>`<button class="chip ${v.id===sel?"on":""}" data-sel="${v.id}">${esc(v.name)}</button>`).join("")+`<button class="chip" id="addV">+ Véhicule</button></div>`;
+ const chips=(ready?"":`<p class="mute" style="margin:8px 0 0">Synchronisation avec le serveur… (modifications bloquées tant que tes données ne sont pas chargées)</p>`)+`<div class="chips">`+S.v.map(v=>`<button class="chip ${v.id===sel?"on":""}" data-sel="${v.id}">${esc(v.name)}</button>`).join("")+`<button class="chip" id="addV">+ Véhicule</button></div>`;
  const foot=`<div class="row" style="margin-top:22px"><button class="btn ghost" id="exp">Exporter</button><button class="btn ghost" id="impb">Importer</button><button class="btn ghost" id="logout">Déconnexion</button></div><p class="mute" style="font-size:13px">Connecté : ${esc(user.email)}</p>`;
  const v=cur();
  if(!v){m.innerHTML=chips+`<div class="empty">Aucun véhicule.<br>Ajoute le premier avec « + Véhicule ».</div>`+foot;return}
@@ -162,23 +163,43 @@ function render(){
  <div class="row" style="justify-content:space-between;margin:22px 0 8px"><h2 style="margin:0"><button class="fold" id="fold" aria-expanded="${open}"><span aria-hidden="true">${open?"▾":"▸"}</span> Suivi</button></h2><button class="btn ghost" id="iv">Intervalles</button></div>
  ${open?rows.map(({t,s})=>`<div class="card st"><div class="row" style="flex-wrap:nowrap"><span class="dot ${s.c}"></span><div><b>${t}</b><br><small>${s.sub}</small></div></div><span class="tag ${s.c}">${s.txt}</span></div>`).join(""):""}
  <div class="row" style="justify-content:space-between;margin:22px 0 8px"><h2 style="margin:0">Historique <small class="mute" style="font-size:15px">· ${fmt(total)} € au total</small></h2>${ents.length?`<button class="btn ghost" id="pdf">Exporter PDF</button>`:""}</div>
- ${ents.length?groups(ents).map(g=>{const cost=g.items.reduce((a,x)=>a+(+x.cost||0),0),notes=[...new Set(g.items.map(x=>x.note).filter(Boolean))].map(esc).join(" · ");return `<div class="card"><div><b>${new Date(g.date).toLocaleDateString("fr-FR")}</b>${g.km!=null?` <small>· ${fmt(g.km)} km</small>`:""}</div>${g.items.map(x=>`<div class="st" style="padding:3px 0"><span>${esc(norm(x.type))}</span><button class="btn del" data-del="${x.id}" aria-label="Supprimer">✕</button></div>`).join("")}${(cost||notes)?`<div class="mute" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px;font-size:14px">${cost?"Total : "+fmt(cost)+" €":""}${cost&&notes?" · ":""}${notes}</div>`:""}</div>`}).join(""):`<div class="empty">Aucun entretien enregistré.</div>`}
+ ${ents.length?groups(ents).map(g=>{const cost=g.items.reduce((a,x)=>a+(+x.cost||0),0),notes=[...new Set(g.items.map(x=>x.note).filter(Boolean))].map(esc).join(" · ");return `<div class="card"><div class="st"><div><b>${new Date(g.date).toLocaleDateString("fr-FR")}</b>${g.km!=null?` <small>· ${fmt(g.km)} km</small>`:""}</div><button class="btn ghost" style="padding:5px 12px" data-edit="${g.date}|${g.km==null?"":g.km}">Modifier</button></div>${g.items.map(x=>`<div class="st" style="padding:3px 0"><span>${esc(norm(x.type))}</span><button class="btn del" data-del="${x.id}" aria-label="Supprimer">✕</button></div>`).join("")}${(cost||notes)?`<div class="mute" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px;font-size:14px">${cost?"Total : "+fmt(cost)+" €":""}${cost&&notes?" · ":""}${notes}</div>`:""}</div>`}).join(""):`<div class="empty">Aucun entretien enregistré.</div>`}
  <div class="row" style="margin-top:12px;justify-content:space-between"><button class="btn ghost" id="renV">Renommer ce véhicule</button><button class="btn del" id="delV">Supprimer ce véhicule</button></div>
  ${foot}
  <button class="btn fab" id="addE">+ Entretien</button>`;
 }
 
 function start(u){
- user=u;if(unsub){unsub();unsub=null}
+ user=u;ready=false;last="{}";if(unsub){unsub();unsub=null}
  if(!u){ref=null;S={v:[],e:[]};render();return}
  ref=doc(db,"users",u.uid);render();
- unsub=onSnapshot(ref,snap=>{const d=snap.data();S={v:(d&&d.v)||[],e:(d&&d.e)||[]};render()},err=>{$("main").innerHTML=`<div class="card"><b>Accès refusé</b><p class="mute">${esc(err.message)}</p><p class="mute">Vérifie les règles Firestore.</p></div>`});
+ unsub=onSnapshot(ref,{includeMetadataChanges:true},snap=>{
+  const d=snap.data(),fromServer=!snap.metadata.fromCache;
+  if(fromServer)ready=true;
+  if(snap.exists()||fromServer){S={v:(d&&d.v)||[],e:(d&&d.e)||[]};last=JSON.stringify(S)}
+  render()},err=>{$("main").innerHTML=`<div class="card"><b>Accès refusé</b><p class="mute">${esc(err.message)}</p><p class="mute">Vérifie les règles Firestore.</p></div>`});
 }
 onAuthStateChanged(auth,start);
 
 function groups(ents){const m=new Map();ents.forEach(x=>{const k=x.date+"|"+(x.km==null?"":x.km);if(!m.has(k))m.set(k,{date:x.date,km:x.km,items:[]});m.get(k).items.push(x)});return [...m.values()]}
-function etlHtml(){
- const v=cur(),ks=Object.keys(TYPES),seen={},ok=t=>{const c=cfgOf(v,t);return c.km||c.m||t.startsWith("Autre")};
+function openE(g){
+ const v=cur(),ks=Object.keys(TYPES);
+ editG=g?g.items.map(x=>x.id):null;editKeep=[];
+ $("eh").textContent=g?"Modifier l'entretien":"Nouvel entretien";
+ $("etl").innerHTML=etlHtml(g?new Set(g.items.map(x=>norm(x.type))):null);
+ $("ed").value=g?g.date:today();
+ $("ek").value=g?(g.km==null?"":g.km):(v.km||"");
+ $("etot").value=g?(g.items.reduce((a,x)=>a+(+x.cost||0),0)||""):"";
+ $("en").value=g?[...new Set(g.items.map(x=>x.note).filter(Boolean))].join(" · "):"";
+ if(g)g.items.forEach(x=>{
+  const t=norm(x.type),i=ks.indexOf(t);
+  if(i>=0&&$("ec"+i)){$("ec"+i).checked=true;const b=baseOf(t);if(b!==t){const f=ks.findIndex(k=>baseOf(k)===b),m=$("eg"+f);if(m){m.checked=true;$("es"+f).hidden=false}}}
+  else{const f=ks.findIndex(k=>baseOf(k)===t&&k!==t),m=f>=0&&$("eg"+f);if(m){m.checked=true;$("es"+f).hidden=false}else editKeep.push(x)}
+ });
+ $("dE").showModal();
+}
+function etlHtml(F){
+ const v=cur(),ks=Object.keys(TYPES),seen={},ok=t=>{const c=cfgOf(v,t);return c.km||c.m||t.startsWith("Autre")||(F&&F.has(t))};
  return ks.map((t,i)=>{
   const b=baseOf(t);
   if(b===t)return ok(t)?`<label class="pick"><input type="checkbox" id="ec${i}"><span>${esc(t)}</span></label>`:"";
@@ -238,12 +259,19 @@ document.addEventListener("click",async e=>{
  if(t.id==="saveV"){const n=$("vn").value.trim();if(!n){$("vn").focus();return}
   const v={id:uid(),name:n,km:+$("vk").value||0};S.v.push(v);pick(v.id);save();$("dV").close();render()}
  if(t.id==="upKm"){const k=prompt("Kilométrage actuel :",cur().km);if(k!==null&&k!==""&&+k>=0){cur().km=+k;save();render()}}
- if(t.id==="addE"){$("etl").innerHTML=etlHtml();$("ed").value=today();$("ek").value=cur().km||"";$("en").value="";$("etot").value="";$("dE").showModal()}
+ if(t.id==="addE")openE(null);
+ if(t.dataset.edit){const v=cur(),g=groups(S.e.filter(x=>x.vid===v.id).sort((a,b)=>b.date.localeCompare(a.date))).find(g=>g.date+"|"+(g.km==null?"":g.km)===t.dataset.edit);if(g)openE(g)}
  if(t.id==="saveE"){const v=cur(),km=$("ek").value===""?null:+$("ek").value;
   const TK=Object.keys(TYPES),ch=TK.map((x,i)=>({x,i})).filter(o=>$("ec"+o.i)&&$("ec"+o.i).checked);
   if([...document.querySelectorAll('#etl [id^="eg"]')].some(e=>e.checked&&!e.closest(".pickg").querySelector(".sub input:checked"))){alert("Choisis Avant et/ou Arrière pour chaque entretien concerné.");return}
-  if(!ch.length){alert("Coche au moins un entretien.");return}
-  ch.forEach((o,j)=>S.e.push({id:uid()+o.i,vid:v.id,type:o.x,date:$("ed").value||today(),km,cost:j===0?(+$("etot").value||0):0,note:$("en").value.trim()}));
+  if(!ch.length&&!editKeep.length){alert("Coche au moins un entretien.");return}
+  const total=+$("etot").value||0,date=$("ed").value||today(),note=$("en").value.trim(),keepIds=editKeep.map(k=>k.id);
+  if(editG){const ids=new Set(editG);S.e=S.e.filter(x=>!ids.has(x.id)||keepIds.includes(x.id))}
+  const news=ch.map(o=>({id:uid()+o.i,vid:v.id,type:o.x,date,km,cost:0,note}));
+  S.e.push(...news);
+  const kept=S.e.filter(x=>keepIds.includes(x.id));kept.forEach(x=>{x.date=date;x.km=km});
+  [...news,...kept].forEach((x,k)=>{x.cost=k===0?total:0});
+  editG=null;editKeep=[];
   if(km!=null&&km>v.km)v.km=km;save();$("dE").close();render()}
  if(t.dataset.del&&confirm("Supprimer cet entretien ?")){S.e=S.e.filter(x=>x.id!==t.dataset.del);save();render()}
  if(t.id==="delV"&&confirm("Supprimer ce véhicule et son historique ?")){const id=sel;S.v=S.v.filter(x=>x.id!==id);S.e=S.e.filter(x=>x.vid!==id);pick(S.v[0]?S.v[0].id:null);save();render()}
