@@ -152,7 +152,7 @@ function render(){
  if(!user){m.innerHTML=`<div class="card" style="margin-top:20px"><p>Connecte-toi pour retrouver tes véhicules sur tous tes appareils.</p><button class="btn" id="login">Se connecter avec Google</button><div id="msg"></div></div>`;return}
  if(!cur()&&S.v[0])pick(S.v[0].id);
  const chips=(ready?"":`<p class="mute" style="margin:8px 0 0">Synchronisation avec le serveur… (modifications bloquées tant que tes données ne sont pas chargées)</p>`)+`<div class="chips">`+S.v.map(v=>`<button class="chip ${v.id===sel?"on":""}" data-sel="${v.id}">${esc(v.name)}</button>`).join("")+`<button class="chip" id="addV">+ Véhicule</button></div>`;
- const foot=`<div class="row" style="margin-top:22px"><button class="btn ghost" id="exp">Exporter</button><button class="btn ghost" id="impb">Importer</button><button class="btn ghost" id="logout">Déconnexion</button></div><p class="mute" style="font-size:13px">Connecté : ${esc(user.email)}</p>`;
+ const foot=`<div class="row" style="margin-top:22px"><button class="btn ghost" id="exp">Exporter</button><button class="btn ghost" id="impb">Importer</button>${cur()?`<button class="btn ghost" id="renV">Renommer</button>`:""}<button class="btn ghost" id="logout">Déconnexion</button></div><p class="mute" style="font-size:13px">Connecté : ${esc(user.email)}</p>`;
  const v=cur();
  if(!v){m.innerHTML=chips+`<div class="empty">Aucun véhicule.<br>Ajoute le premier avec « + Véhicule ».</div>`+foot;return}
  const ents=S.e.filter(x=>x.vid===v.id).sort((a,b)=>b.date.localeCompare(a.date));
@@ -164,7 +164,7 @@ function render(){
  ${open?rows.map(({t,s})=>`<div class="card st"><div class="row" style="flex-wrap:nowrap"><span class="dot ${s.c}"></span><div><b>${t}</b><br><small>${s.sub}</small></div></div><span class="tag ${s.c}">${s.txt}</span></div>`).join(""):""}
  <div class="row" style="justify-content:space-between;margin:22px 0 8px"><h2 style="margin:0">Historique <small class="mute" style="font-size:15px">· ${fmt(total)} € au total</small></h2>${ents.length?`<button class="btn ghost" id="pdf">Exporter PDF</button>`:""}</div>
  ${ents.length?groups(ents).map(g=>{const cost=g.items.reduce((a,x)=>a+(+x.cost||0),0),notes=[...new Set(g.items.map(x=>x.note).filter(Boolean))].map(esc).join(" · ");return `<div class="card"><div class="st"><div><b>${new Date(g.date).toLocaleDateString("fr-FR")}</b>${g.km!=null?` <small>· ${fmt(g.km)} km</small>`:""}</div><button class="btn ghost" style="padding:5px 12px" data-edit="${g.date}|${g.km==null?"":g.km}">Modifier</button></div>${g.items.map(x=>`<div class="st" style="padding:3px 0"><span>${esc(norm(x.type))}</span><button class="btn del" data-del="${x.id}" aria-label="Supprimer">✕</button></div>`).join("")}${(cost||notes)?`<div class="mute" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px;font-size:14px">${cost?"Total : "+fmt(cost)+" €":""}${cost&&notes?" · ":""}${notes}</div>`:""}</div>`}).join(""):`<div class="empty">Aucun entretien enregistré.</div>`}
- <div class="row" style="margin-top:12px;justify-content:space-between"><button class="btn ghost" id="renV">Renommer ce véhicule</button><button class="btn del" id="delV">Supprimer ce véhicule</button></div>
+ <div style="margin-top:12px"><button class="btn del" id="delV">Supprimer ce véhicule</button></div>
  ${foot}
  <button class="btn fab" id="addE">+ Entretien</button>`;
 }
