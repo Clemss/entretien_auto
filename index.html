@@ -33,11 +33,14 @@ button,input,select{font:inherit;color:inherit}
 .ok{background:var(--ok)}.warn{background:var(--warn)}.bad{background:var(--bad)}.none{background:var(--line)}
 .tag{font-weight:500}.tag.warn{color:var(--warn);background:none}.tag.bad{color:var(--bad);background:none}.tag.ok{color:var(--ok);background:none}
 dialog{border:0;border-radius:14px;padding:18px;width:min(92vw,420px);background:var(--card);color:var(--ink)}
+dialog{max-height:88vh;overflow-y:auto}
+.row input{min-width:0}
 dialog::backdrop{background:rgba(0,0,0,.45)}
 label{display:block;margin:10px 0 4px;color:var(--mute);font-size:14px}
 input,select{width:100%;padding:10px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg)}
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .empty{text-align:center;color:var(--mute);padding:26px 10px}
+.fold{background:none;border:0;padding:0;font:inherit;color:inherit;display:flex;gap:8px;align-items:center;cursor:pointer}
 #msg{color:var(--bad);font-size:14px;margin-top:10px}
 </style>
 </head>
@@ -58,8 +61,14 @@ input,select{width:100%;padding:10px;border:1.5px solid var(--line);border-radiu
 <label>Note</label><input id="en" placeholder="Garage, pièces...">
 <div class="row" style="margin-top:16px;justify-content:flex-end"><button class="btn ghost" data-close>Annuler</button><button class="btn" id="saveE">Enregistrer</button></div></dialog>
 
+<dialog id="dI"><h2>Intervalles d'entretien</h2>
+<p class="mute" style="margin:6px 0 14px">Réglages pour ce véhicule. Mets 0 km et 0 mois pour ne pas suivre un entretien. Le premier seuil atteint déclenche l'alerte.</p>
+<div id="ivl"></div>
+<div class="row" style="margin-top:16px;justify-content:space-between"><button class="btn del" id="resetI">Réinitialiser</button><div class="row"><button class="btn ghost" data-close>Annuler</button><button class="btn" id="saveI">Enregistrer</button></div></div></dialog>
+
 <input type="file" id="imp" accept="application/json,.json" hidden>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
@@ -96,8 +105,10 @@ const TYPES={
 };
 const ALIAS={"Vidange":"Vidange Moteur + Filtre à Huile","Freins":"Plaquettes de Frein","Courroie de distribution":"Courroie de Distribution + Pompe à eau","Contrôle technique":"Contrôle Technique","Autre":"Autre (préciser en note)"};
 const norm=t=>ALIAS[t]||t;
+const cfgOf=(v,t)=>(v.iv&&v.iv[t])||TYPES[t];
 let S={v:[],e:[]},sel=null,ref=null,unsub=null,user=null;
 try{sel=localStorage.getItem("sel")}catch(e){}
+let open=true;try{open=localStorage.getItem("suiviOpen")!=="0"}catch(e){}
 const $=id=>document.getElementById(id);
 const fmt=n=>Number(n).toLocaleString("fr-FR");
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
@@ -108,7 +119,7 @@ const save=()=>{if(ref)setDoc(ref,S).catch(e=>alert("Erreur de sauvegarde : "+e.
 const pick=id=>{sel=id;try{localStorage.setItem("sel",id||"")}catch(e){}};
 
 function status(v,t){
- const cfg=TYPES[t];if(!cfg.km&&!cfg.m)return null;
+ const cfg=cfgOf(v,t);if(!cfg.km&&!cfg.m)return null;
  const last=S.e.filter(x=>x.vid===v.id&&norm(x.type)===t).sort((a,b)=>b.date.localeCompare(a.date))[0];
  if(!last)return{c:"none",txt:"Jamais fait",sub:"Ajoute le dernier entretien"};
  let left=[],level=0;
@@ -132,9 +143,9 @@ function render(){
  const rows=Object.keys(TYPES).map(t=>({t,s:status(v,t)})).filter(x=>x.s).sort((a,b)=>["bad","warn","none","ok"].indexOf(a.s.c)-["bad","warn","none","ok"].indexOf(b.s.c));
  m.innerHTML=chips+`
  <div class="card km"><div><span class="mute">Kilométrage</span><br><b>${fmt(v.km)} km</b></div><button class="btn ghost" id="upKm">Mettre à jour</button></div>
- <h2>Suivi</h2>
- ${rows.map(({t,s})=>`<div class="card st"><div class="row" style="flex-wrap:nowrap"><span class="dot ${s.c}"></span><div><b>${t}</b><br><small>${s.sub}</small></div></div><span class="tag ${s.c}">${s.txt}</span></div>`).join("")}
- <h2>Historique <small class="mute" style="font-size:15px">· ${fmt(total)} € au total</small></h2>
+ <div class="row" style="justify-content:space-between;margin:22px 0 8px"><h2 style="margin:0"><button class="fold" id="fold" aria-expanded="${open}"><span aria-hidden="true">${open?"▾":"▸"}</span> Suivi</button></h2><button class="btn ghost" id="iv">Intervalles</button></div>
+ ${open?rows.map(({t,s})=>`<div class="card st"><div class="row" style="flex-wrap:nowrap"><span class="dot ${s.c}"></span><div><b>${t}</b><br><small>${s.sub}</small></div></div><span class="tag ${s.c}">${s.txt}</span></div>`).join(""):""}
+ <div class="row" style="justify-content:space-between;margin:22px 0 8px"><h2 style="margin:0">Historique <small class="mute" style="font-size:15px">· ${fmt(total)} € au total</small></h2>${ents.length?`<button class="btn ghost" id="pdf">Exporter PDF</button>`:""}</div>
  ${ents.length?ents.map(x=>`<div class="card st"><div><b>${esc(x.type)}</b> <small>${new Date(x.date).toLocaleDateString("fr-FR")}${x.km!=null?" · "+fmt(x.km)+" km":""}</small><br><small>${x.cost?fmt(x.cost)+" €":""}${x.note?(x.cost?" · ":"")+esc(x.note):""}</small></div><button class="btn del" data-del="${x.id}">Suppr.</button></div>`).join(""):`<div class="empty">Aucun entretien enregistré.</div>`}
  <div style="margin-top:12px"><button class="btn del" id="delV">Supprimer ce véhicule</button></div>
  ${foot}
@@ -149,11 +160,49 @@ function start(u){
 }
 onAuthStateChanged(auth,start);
 
+const IK=Object.keys(TYPES).filter(t=>!t.startsWith("Autre"));
+function openIv(){
+ const v=cur();
+ $("ivl").innerHTML=IK.map((t,i)=>{const c=cfgOf(v,t);return `<div style="margin-bottom:12px"><b>${esc(t)}</b><div class="row" style="flex-wrap:nowrap;margin-top:4px"><input type="number" inputmode="numeric" min="0" id="ik${i}" value="${c.km}" aria-label="Kilomètres"><span class="mute">km</span><input type="number" inputmode="numeric" min="0" id="im${i}" value="${c.m}" aria-label="Mois"><span class="mute">mois</span></div></div>`}).join("");
+ $("dI").showModal();
+}
+function saveIv(){
+ const v=cur(),iv={};
+ IK.forEach((t,i)=>{const k=Math.max(0,+$("ik"+i).value||0),m=Math.max(0,+$("im"+i).value||0);if(k!==TYPES[t].km||m!==TYPES[t].m)iv[t]={km:k,m}});
+ if(Object.keys(iv).length)v.iv=iv;else delete v.iv;
+ save();$("dI").close();render();
+}
+function pdf(){
+ const J=window.jspdf&&window.jspdf.jsPDF;if(!J){alert("Module PDF non chargé : vérifie ta connexion et recharge la page.");return}
+ const v=cur(),ents=S.e.filter(x=>x.vid===v.id).sort((a,b)=>b.date.localeCompare(a.date));
+ const d=new J({unit:"mm",format:"a4"}),n=x=>String(x).replace(/\B(?=(\d{3})+(?!\d))/g," "),c=s=>String(s||"").replace(/[^\x20-\x7E\u00A0-\u00FF]/g,"?"),dt=s=>s.split("-").reverse().join("/");
+ const total=ents.reduce((a,x)=>a+(+x.cost||0),0);
+ d.setFont("helvetica","bold");d.setFontSize(18);d.text("Historique d'entretien",14,18);
+ d.setFontSize(12);d.text(c(v.name),14,26);
+ d.setFont("helvetica","normal");d.setFontSize(10);
+ d.text("Kilométrage actuel : "+n(v.km)+" km  |  Généré le "+dt(today())+"  |  Total : "+n(total)+" EUR",14,32);
+ const X=[14,34,92,120,150];let y=42;
+ const head=()=>{d.setFont("helvetica","bold");d.setFontSize(10);["Date","Type","Km","Coût","Note"].forEach((t,i)=>d.text(t,X[i],y));d.line(14,y+2,196,y+2);y+=8;d.setFont("helvetica","normal")};
+ head();
+ ents.forEach(x=>{
+  const type=d.splitTextToSize(c(x.type),56),note=d.splitTextToSize(c(x.note),46),h=Math.max(type.length,note.length)*5+2;
+  if(y+h>285){d.addPage();y=20;head()}
+  d.text(dt(x.date),X[0],y);d.text(type,X[1],y);d.text(x.km!=null?n(x.km):"-",X[2],y);d.text(x.cost?n(x.cost)+" EUR":"-",X[3],y);d.text(note,X[4],y);
+  y+=h;
+ });
+ d.save("entretien-"+c(v.name).replace(/[^\w-]+/g,"_")+"-"+today()+".pdf");
+}
+
 document.addEventListener("click",async e=>{
  const t=e.target;
  if(t.id==="login"){try{await signInWithPopup(auth,new GoogleAuthProvider())}catch(err){
    if(err.code==="auth/popup-blocked"||err.code==="auth/operation-not-supported-in-this-environment"){signInWithRedirect(auth,new GoogleAuthProvider())}
    else if(err.code!=="auth/popup-closed-by-user"&&err.code!=="auth/cancelled-popup-request"){const m=$("msg");if(m)m.textContent="Connexion impossible : "+(err.code||err.message)}}}
+ if(t.closest("#fold")){open=!open;try{localStorage.setItem("suiviOpen",open?"1":"0")}catch(e){}render()}
+ if(t.id==="pdf")pdf();
+ if(t.id==="iv")openIv();
+ if(t.id==="saveI")saveIv();
+ if(t.id==="resetI"&&confirm("Revenir aux intervalles par défaut pour ce véhicule ?")){delete cur().iv;save();$("dI").close();render()}
  if(t.id==="logout")signOut(auth);
  if(t.dataset.sel){pick(t.dataset.sel);render()}
  if(t.id==="addV"){$("vn").value="";$("vk").value="";$("dV").showModal()}
