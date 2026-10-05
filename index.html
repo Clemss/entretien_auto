@@ -37,6 +37,7 @@ dialog{border:0;border-radius:14px;padding:18px;width:min(92vw,420px);background
 .pick input[type=checkbox]{width:20px;height:20px;flex:none}
 .pick input[type=number]{width:84px;flex:none;padding:6px}
 .pick span{flex:1}
+.ico{font-size:22px;line-height:1;margin-right:10px;flex:none}
 .sub{display:flex;gap:6px;margin:-2px 0 6px 26px}
 .sub[hidden]{display:none}
 .sub .pick{margin:0;flex:1}
@@ -121,6 +122,8 @@ const TYPES={
 const ALIAS={"Vidange":"Vidange Moteur + Filtre à Huile","Freins":"Plaquettes de Frein","Courroie de distribution":"Courroie de Distribution + Pompe à eau","Contrôle technique":"Contrôle Technique","Autre":"Autre (préciser en note)"};
 const norm=t=>ALIAS[t]||t;
 const cfgOf=(v,t)=>(v.iv&&v.iv[t])||TYPES[t];
+const ICONS={"Vidange Moteur + Filtre à Huile":"🛢️","Filtre à Air":"🌬️","Filtre d'Habitacle (Pollens)":"🌸","Filtre à Carburant (Gazole/Essence)":"⛽","Bougies d'allumage":"⚡","Bougies de préchauffage":"🔥","Liquide de Frein (Purge)":"💧","Liquide de Refroidissement":"❄️","Courroie de Distribution + Pompe à eau":"⚙️","Courroie d'Accessoires":"🔗","Plaquettes de Frein":"🛑","Disques de Frein":"💿","Amortisseurs":"🔩","Pneus":"🛞","Géométrie (Parallélisme)":"📐","Vidange Boîte de Vitesses":"🕹️","Remplacement Kit Embrayage":"🦶","Contrôle Technique":"📋"};
+const iconOf=t=>ICONS[baseOf(t)]||"🔧";
 const baseOf=t=>t.replace(/ \((Avant|Arrière)\)$/,"");
 let S={v:[],e:[]},sel=null,ref=null,unsub=null,user=null;
 try{sel=localStorage.getItem("sel")}catch(e){}
@@ -161,7 +164,7 @@ function render(){
  m.innerHTML=chips+`
  <div class="card km"><div><span class="mute">Kilométrage</span><br><b>${fmt(v.km)} km</b></div><button class="btn ghost" id="upKm">Mettre à jour</button></div>
  <div class="row" style="justify-content:space-between;margin:22px 0 8px"><h2 style="margin:0"><button class="fold" id="fold" aria-expanded="${open}"><span aria-hidden="true">${open?"▾":"▸"}</span> Suivi</button></h2><button class="btn ghost" id="iv">Intervalles</button></div>
- ${open?rows.map(({t,s})=>`<div class="card st"><div class="row" style="flex-wrap:nowrap"><span class="dot ${s.c}"></span><div><b>${t}</b><br><small>${s.sub}</small></div></div><span class="tag ${s.c}">${s.txt}</span></div>`).join(""):""}
+ ${open?rows.map(({t,s})=>`<div class="card st"><div class="row" style="flex-wrap:nowrap"><span class="dot ${s.c}"></span><span class="ico" aria-hidden="true">${iconOf(t)}</span><div><b>${t}</b><br><small>${s.sub}</small></div></div><span class="tag ${s.c}">${s.txt}</span></div>`).join(""):""}
  <div class="row" style="justify-content:space-between;margin:22px 0 8px"><h2 style="margin:0">Historique <small class="mute" style="font-size:15px">· ${fmt(total)} € au total</small></h2>${ents.length?`<button class="btn ghost" id="pdf">Exporter PDF</button>`:""}</div>
  ${ents.length?groups(ents).map(g=>{const cost=g.items.reduce((a,x)=>a+(+x.cost||0),0),notes=[...new Set(g.items.map(x=>x.note).filter(Boolean))].map(esc).join(" · ");return `<div class="card"><div class="st"><div><b>${new Date(g.date).toLocaleDateString("fr-FR")}</b>${g.km!=null?` <small>· ${fmt(g.km)} km</small>`:""}</div><button class="btn ghost" style="padding:5px 12px" data-edit="${g.date}|${g.km==null?"":g.km}">Modifier</button></div>${g.items.map(x=>`<div class="st" style="padding:3px 0"><span>${esc(norm(x.type))}</span><button class="btn del" data-del="${x.id}" aria-label="Supprimer">✕</button></div>`).join("")}${(cost||notes)?`<div class="mute" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px;font-size:14px">${cost?"Total : "+fmt(cost)+" €":""}${cost&&notes?" · ":""}${notes}</div>`:""}</div>`}).join(""):`<div class="empty">Aucun entretien enregistré.</div>`}
  <div style="margin-top:12px"><button class="btn del" id="delV">Supprimer ce véhicule</button></div>
