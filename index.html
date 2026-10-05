@@ -45,7 +45,7 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 <label class="form-label mt-3">Entretiens effectués</label><div id="etl"></div>
 <label class="form-label mt-3">Coût total (€)</label><input class="form-control" id="etot" type="number" inputmode="decimal" placeholder="0">
 <label class="form-label mt-3">Note (pour tous)</label><input class="form-control" id="en" placeholder="Garage, pièces...">
-<div class="d-flex gap-2 justify-content-end mt-4"><button class="btn btn-outline-secondary" data-close>Annuler</button><button class="btn btn-primary" id="saveE">Enregistrer</button></div></div></dialog>
+<div class="d-flex gap-2 justify-content-end mt-4"><button class="btn btn-outline-danger me-auto" id="delE" hidden>Supprimer</button><button class="btn btn-outline-secondary" data-close>Annuler</button><button class="btn btn-primary" id="saveE">Enregistrer</button></div></div></dialog>
 
 <dialog id="dI"><div class="p-4"><h2 class="h5">Intervalles d'entretien</h2>
 <p class="text-body-secondary small mb-3">Réglages pour ce véhicule. Mets 0 km et 0 mois pour ne pas suivre un entretien. Le premier seuil atteint déclenche l'alerte.</p>
@@ -145,7 +145,7 @@ function render(){
  <div class="d-flex justify-content-between align-items-center mb-2"><h2 class="h5 mb-0"><button class="btn btn-link text-reset text-decoration-none p-0 fw-semibold fs-5" id="fold" aria-expanded="${open}">${open?"▾":"▸"} Suivi</button></h2><button class="btn btn-sm btn-outline-primary" id="iv">Intervalles</button></div>
  ${open?`<div class="list-group shadow-sm mb-4">${rows.map(({t,s})=>`<div class="list-group-item d-flex justify-content-between align-items-center gap-2 lb-${s.c}"><div class="d-flex align-items-center"><span class="ico" aria-hidden="true">${iconOf(t)}</span><div><div class="fw-semibold">${t}</div><div class="small text-body-secondary">${s.sub}</div></div></div><span class="badge text-bg-${BS[s.c]} flex-shrink-0">${s.txt}</span></div>`).join("")}</div>`:""}
  <div class="d-flex justify-content-between align-items-center mb-2 mt-4"><h2 class="h5 mb-0">Historique <small class="text-body-secondary fs-6 fw-normal">· ${fmt(total)} € au total</small></h2>${ents.length?`<button class="btn btn-sm btn-outline-primary" id="pdf">Exporter PDF</button>`:""}</div>
- ${ents.length?groups(ents).map(g=>{const cost=g.items.reduce((a,x)=>a+(+x.cost||0),0),notes=[...new Set(g.items.map(x=>x.note).filter(Boolean))].map(esc).join(" · ");return `<div class="card shadow-sm mb-2"><div class="card-body py-2"><div class="d-flex justify-content-between align-items-center mb-1"><div><span class="fw-semibold">${new Date(g.date).toLocaleDateString("fr-FR")}</span>${g.km!=null?` <small class="text-body-secondary">· ${fmt(g.km)} km</small>`:""}</div><button class="btn btn-sm btn-outline-primary" data-edit="${g.date}|${g.km==null?"":g.km}">Modifier</button></div>${g.items.map(x=>`<div class="d-flex justify-content-between align-items-center py-1"><span>${esc(norm(x.type))}</span><button class="btn btn-sm btn-outline-danger py-0 px-2" data-del="${x.id}" aria-label="Supprimer">✕</button></div>`).join("")}${(cost||notes)?`<div class="text-body-secondary small border-top pt-2 mt-1">${cost?"Total : "+fmt(cost)+" €":""}${cost&&notes?" · ":""}${notes}</div>`:""}</div></div>`}).join(""):`<div class="text-center text-body-secondary py-4">Aucun entretien enregistré.</div>`}
+ ${ents.length?groups(ents).map(g=>{const cost=g.items.reduce((a,x)=>a+(+x.cost||0),0),notes=[...new Set(g.items.map(x=>x.note).filter(Boolean))].map(esc).join(" · ");return `<div class="card shadow-sm mb-2"><div class="card-body py-2"><div class="d-flex justify-content-between align-items-center mb-1"><div><span class="fw-semibold">${new Date(g.date).toLocaleDateString("fr-FR")}</span>${g.km!=null?` <small class="text-body-secondary">· ${fmt(g.km)} km</small>`:""}</div><button class="btn btn-sm btn-outline-primary" data-edit="${g.date}|${g.km==null?"":g.km}">Modifier</button></div>${g.items.map(x=>`<div class="py-1">${esc(norm(x.type))}</div>`).join("")}${(cost||notes)?`<div class="text-body-secondary small border-top pt-2 mt-1">${cost?"Total : "+fmt(cost)+" €":""}${cost&&notes?" · ":""}${notes}</div>`:""}</div></div>`}).join(""):`<div class="text-center text-body-secondary py-4">Aucun entretien enregistré.</div>`}
  <div class="mt-3"><button class="btn btn-sm btn-outline-danger" id="delV">Supprimer ce véhicule</button></div>
  ${foot}
  <button class="btn btn-primary btn-lg rounded-pill shadow position-fixed start-50 translate-middle-x px-4" style="bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:1030" id="addE">+ Entretien</button>`;
@@ -167,6 +167,7 @@ function groups(ents){const m=new Map();ents.forEach(x=>{const k=x.date+"|"+(x.k
 function openE(g){
  const v=cur(),ks=Object.keys(TYPES);
  editG=g?g.items.map(x=>x.id):null;editKeep=[];
+$("delE").hidden=!g;
  $("eh").textContent=g?"Modifier l'entretien":"Nouvel entretien";
  $("etl").innerHTML=etlHtml(g?new Set(g.items.map(x=>norm(x.type))):null);
  $("ed").value=g?g.date:today();
@@ -255,7 +256,7 @@ document.addEventListener("click",async e=>{
   [...news,...kept].forEach((x,k)=>{x.cost=k===0?total:0});
   editG=null;editKeep=[];
   if(km!=null&&km>v.km)v.km=km;save();$("dE").close();render()}
- if(t.dataset.del&&confirm("Supprimer cet entretien ?")){S.e=S.e.filter(x=>x.id!==t.dataset.del);save();render()}
+ if(t.id==="delE"&&confirm("Supprimer cette visite et tous ses entretiens ?")){const ids=new Set(editG||[]);S.e=S.e.filter(x=>!ids.has(x.id));editG=null;editKeep=[];save();$("dE").close();render()}
  if(t.id==="delV"&&confirm("Supprimer ce véhicule et son historique ?")){const id=sel;S.v=S.v.filter(x=>x.id!==id);S.e=S.e.filter(x=>x.vid!==id);pick(S.v[0]?S.v[0].id:null);save();render()}
  if(t.id==="exp"){const b=new Blob([JSON.stringify(S,null,1)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="entretien-sauvegarde-"+today()+".json";document.body.appendChild(a);a.click();a.remove()}
  if(t.id==="impb")$("imp").click();
