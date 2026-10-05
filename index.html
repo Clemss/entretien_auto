@@ -37,6 +37,9 @@ dialog{border:0;border-radius:14px;padding:18px;width:min(92vw,420px);background
 .pick input[type=checkbox]{width:20px;height:20px;flex:none}
 .pick input[type=number]{width:84px;flex:none;padding:6px}
 .pick span{flex:1}
+.sub{display:flex;gap:6px;margin:-2px 0 6px 26px}
+.sub[hidden]{display:none}
+.sub .pick{margin:0;flex:1}
 dialog{max-height:88vh;overflow-y:auto}
 .row input{min-width:0}
 dialog::backdrop{background:rgba(0,0,0,.45)}
@@ -101,9 +104,12 @@ const TYPES={
 "Liquide de Refroidissement":{km:60000,m:48},
 "Courroie de Distribution + Pompe à eau":{km:100000,m:60},
 "Courroie d'Accessoires":{km:100000,m:60},
-"Plaquettes de Frein":{km:30000,m:24},
-"Disques de Frein":{km:60000,m:0},
-"Pneus":{km:40000,m:0},
+"Plaquettes de Frein (Avant)":{km:30000,m:24},
+"Plaquettes de Frein (Arrière)":{km:50000,m:36},
+"Disques de Frein (Avant)":{km:60000,m:0},
+"Disques de Frein (Arrière)":{km:80000,m:0},
+"Pneus (Avant)":{km:40000,m:0},
+"Pneus (Arrière)":{km:50000,m:0},
 "Géométrie (Parallélisme)":{km:20000,m:24},
 "Vidange Boîte de Vitesses":{km:60000,m:48},
 "Contrôle Technique":{km:0,m:24},
@@ -112,6 +118,7 @@ const TYPES={
 const ALIAS={"Vidange":"Vidange Moteur + Filtre à Huile","Freins":"Plaquettes de Frein","Courroie de distribution":"Courroie de Distribution + Pompe à eau","Contrôle technique":"Contrôle Technique","Autre":"Autre (préciser en note)"};
 const norm=t=>ALIAS[t]||t;
 const cfgOf=(v,t)=>(v.iv&&v.iv[t])||TYPES[t];
+const baseOf=t=>t.replace(/ \((Avant|Arrière)\)$/,"");
 let S={v:[],e:[]},sel=null,ref=null,unsub=null,user=null;
 try{sel=localStorage.getItem("sel")}catch(e){}
 let open=true;try{open=localStorage.getItem("suiviOpen")!=="0"}catch(e){}
@@ -126,7 +133,7 @@ const pick=id=>{sel=id;try{localStorage.setItem("sel",id||"")}catch(e){}};
 
 function status(v,t){
  const cfg=cfgOf(v,t);if(!cfg.km&&!cfg.m)return null;
- const last=S.e.filter(x=>x.vid===v.id&&norm(x.type)===t).sort((a,b)=>b.date.localeCompare(a.date))[0];
+ const last=S.e.filter(x=>x.vid===v.id&&(norm(x.type)===t||norm(x.type)===baseOf(t))).sort((a,b)=>b.date.localeCompare(a.date))[0];
  if(!last)return{c:"none",txt:"Jamais fait",sub:"Ajoute le dernier entretien"};
  let left=[],level=0;
  if(cfg.km&&last.km!=null){const r=last.km+cfg.km-v.km;left.push(r>=0?"dans "+fmt(r)+" km":"dépassé de "+fmt(-r)+" km");level=Math.max(level,r<0?2:r<cfg.km*.1?1:0)}
@@ -153,7 +160,7 @@ function render(){
  ${open?rows.map(({t,s})=>`<div class="card st"><div class="row" style="flex-wrap:nowrap"><span class="dot ${s.c}"></span><div><b>${t}</b><br><small>${s.sub}</small></div></div><span class="tag ${s.c}">${s.txt}</span></div>`).join(""):""}
  <div class="row" style="justify-content:space-between;margin:22px 0 8px"><h2 style="margin:0">Historique <small class="mute" style="font-size:15px">· ${fmt(total)} € au total</small></h2>${ents.length?`<button class="btn ghost" id="pdf">Exporter PDF</button>`:""}</div>
  ${ents.length?groups(ents).map(g=>{const cost=g.items.reduce((a,x)=>a+(+x.cost||0),0),notes=[...new Set(g.items.map(x=>x.note).filter(Boolean))].map(esc).join(" · ");return `<div class="card"><div><b>${new Date(g.date).toLocaleDateString("fr-FR")}</b>${g.km!=null?` <small>· ${fmt(g.km)} km</small>`:""}</div>${g.items.map(x=>`<div class="st" style="padding:3px 0"><span>${esc(norm(x.type))}</span><button class="btn del" data-del="${x.id}" aria-label="Supprimer">✕</button></div>`).join("")}${(cost||notes)?`<div class="mute" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px;font-size:14px">${cost?"Total : "+fmt(cost)+" €":""}${cost&&notes?" · ":""}${notes}</div>`:""}</div>`}).join(""):`<div class="empty">Aucun entretien enregistré.</div>`}
- <div style="margin-top:12px"><button class="btn del" id="delV">Supprimer ce véhicule</button></div>
+ <div class="row" style="margin-top:12px;justify-content:space-between"><button class="btn ghost" id="renV">Renommer ce véhicule</button><button class="btn del" id="delV">Supprimer ce véhicule</button></div>
  ${foot}
  <button class="btn fab" id="addE">+ Entretien</button>`;
 }
@@ -167,6 +174,16 @@ function start(u){
 onAuthStateChanged(auth,start);
 
 function groups(ents){const m=new Map();ents.forEach(x=>{const k=x.date+"|"+(x.km==null?"":x.km);if(!m.has(k))m.set(k,{date:x.date,km:x.km,items:[]});m.get(k).items.push(x)});return [...m.values()]}
+function etlHtml(){
+ const v=cur(),ks=Object.keys(TYPES),seen={},ok=t=>{const c=cfgOf(v,t);return c.km||c.m||t.startsWith("Autre")};
+ return ks.map((t,i)=>{
+  const b=baseOf(t);
+  if(b===t)return ok(t)?`<label class="pick"><input type="checkbox" id="ec${i}"><span>${esc(t)}</span></label>`:"";
+  if(seen[b])return "";seen[b]=1;
+  const subs=ks.map((u,j)=>({u,j})).filter(o=>baseOf(o.u)===b&&ok(o.u));
+  if(!subs.length)return "";
+  return `<div class="pickg"><label class="pick"><input type="checkbox" id="eg${i}"><span>${esc(b)}</span></label><div class="sub" id="es${i}" hidden>${subs.map(o=>`<label class="pick"><input type="checkbox" id="ec${o.j}"><span>${/Avant/.test(o.u)?"Avant":"Arrière"}</span></label>`).join("")}</div></div>`}).join("");
+}
 const IK=Object.keys(TYPES).filter(t=>!t.startsWith("Autre"));
 function openIv(){
  const v=cur();
@@ -208,6 +225,7 @@ document.addEventListener("click",async e=>{
  if(t.closest("#fold")){open=!open;try{localStorage.setItem("suiviOpen",open?"1":"0")}catch(e){}render()}
  if(t.id==="pdf")pdf();
  if(t.id==="iv")openIv();
+ if(t.id==="renV"){const n=prompt("Nom du véhicule :",cur().name);if(n!==null&&n.trim()){cur().name=n.trim();save();render()}}
  if(t.id==="saveI")saveIv();
  if(t.id==="resetI"&&confirm("Revenir aux intervalles par défaut pour ce véhicule ?")){delete cur().iv;save();$("dI").close();render()}
  if(t.id==="logout")signOut(auth);
@@ -217,9 +235,10 @@ document.addEventListener("click",async e=>{
  if(t.id==="saveV"){const n=$("vn").value.trim();if(!n){$("vn").focus();return}
   const v={id:uid(),name:n,km:+$("vk").value||0};S.v.push(v);pick(v.id);save();$("dV").close();render()}
  if(t.id==="upKm"){const k=prompt("Kilométrage actuel :",cur().km);if(k!==null&&k!==""&&+k>=0){cur().km=+k;save();render()}}
- if(t.id==="addE"){$("etl").innerHTML=Object.keys(TYPES).map((x,i)=>{const c=cfgOf(cur(),x);return (c.km||c.m||x.startsWith("Autre"))?`<label class="pick"><input type="checkbox" id="ec${i}"><span>${esc(x)}</span></label>`:""}).join("");$("ed").value=today();$("ek").value=cur().km||"";$("en").value="";$("etot").value="";$("dE").showModal()}
+ if(t.id==="addE"){$("etl").innerHTML=etlHtml();$("ed").value=today();$("ek").value=cur().km||"";$("en").value="";$("etot").value="";$("dE").showModal()}
  if(t.id==="saveE"){const v=cur(),km=$("ek").value===""?null:+$("ek").value;
   const TK=Object.keys(TYPES),ch=TK.map((x,i)=>({x,i})).filter(o=>$("ec"+o.i)&&$("ec"+o.i).checked);
+  if([...document.querySelectorAll('#etl [id^="eg"]')].some(e=>e.checked&&!e.closest(".pickg").querySelector(".sub input:checked"))){alert("Choisis Avant et/ou Arrière pour chaque entretien concerné.");return}
   if(!ch.length){alert("Coche au moins un entretien.");return}
   ch.forEach((o,j)=>S.e.push({id:uid()+o.i,vid:v.id,type:o.x,date:$("ed").value||today(),km,cost:j===0?(+$("etot").value||0):0,note:$("en").value.trim()}));
   if(km!=null&&km>v.km)v.km=km;save();$("dE").close();render()}
@@ -228,6 +247,7 @@ document.addEventListener("click",async e=>{
  if(t.id==="exp"){const b=new Blob([JSON.stringify(S,null,1)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="entretien-sauvegarde-"+today()+".json";document.body.appendChild(a);a.click();a.remove()}
  if(t.id==="impb")$("imp").click();
 });
+$("etl").addEventListener("change",e=>{const id=e.target.id;if(id.startsWith("eg")){const q=$("es"+id.slice(2));q.hidden=!e.target.checked;if(!e.target.checked)q.querySelectorAll("input").forEach(x=>x.checked=false)}});
 $("imp").addEventListener("change",async e=>{
  const f=e.target.files[0];e.target.value="";if(!f)return;
  try{const d=JSON.parse(await f.text());if(!Array.isArray(d.v)||!Array.isArray(d.e))throw 0;
