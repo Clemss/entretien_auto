@@ -152,7 +152,7 @@ function render(){
  <div class="row" style="justify-content:space-between;margin:22px 0 8px"><h2 style="margin:0"><button class="fold" id="fold" aria-expanded="${open}"><span aria-hidden="true">${open?"▾":"▸"}</span> Suivi</button></h2><button class="btn ghost" id="iv">Intervalles</button></div>
  ${open?rows.map(({t,s})=>`<div class="card st"><div class="row" style="flex-wrap:nowrap"><span class="dot ${s.c}"></span><div><b>${t}</b><br><small>${s.sub}</small></div></div><span class="tag ${s.c}">${s.txt}</span></div>`).join(""):""}
  <div class="row" style="justify-content:space-between;margin:22px 0 8px"><h2 style="margin:0">Historique <small class="mute" style="font-size:15px">· ${fmt(total)} € au total</small></h2>${ents.length?`<button class="btn ghost" id="pdf">Exporter PDF</button>`:""}</div>
- ${ents.length?ents.map(x=>`<div class="card st"><div><b>${esc(x.type)}</b> <small>${new Date(x.date).toLocaleDateString("fr-FR")}${x.km!=null?" · "+fmt(x.km)+" km":""}</small><br><small>${x.cost?fmt(x.cost)+" €":""}${x.note?(x.cost?" · ":"")+esc(x.note):""}</small></div><button class="btn del" data-del="${x.id}">Suppr.</button></div>`).join(""):`<div class="empty">Aucun entretien enregistré.</div>`}
+ ${ents.length?groups(ents).map(g=>{const cost=g.items.reduce((a,x)=>a+(+x.cost||0),0),notes=[...new Set(g.items.map(x=>x.note).filter(Boolean))].map(esc).join(" · ");return `<div class="card"><div><b>${new Date(g.date).toLocaleDateString("fr-FR")}</b>${g.km!=null?` <small>· ${fmt(g.km)} km</small>`:""}</div>${g.items.map(x=>`<div class="st" style="padding:3px 0"><span>${esc(norm(x.type))}</span><button class="btn del" data-del="${x.id}" aria-label="Supprimer">✕</button></div>`).join("")}${(cost||notes)?`<div class="mute" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px;font-size:14px">${cost?"Total : "+fmt(cost)+" €":""}${cost&&notes?" · ":""}${notes}</div>`:""}</div>`}).join(""):`<div class="empty">Aucun entretien enregistré.</div>`}
  <div style="margin-top:12px"><button class="btn del" id="delV">Supprimer ce véhicule</button></div>
  ${foot}
  <button class="btn fab" id="addE">+ Entretien</button>`;
@@ -166,6 +166,7 @@ function start(u){
 }
 onAuthStateChanged(auth,start);
 
+function groups(ents){const m=new Map();ents.forEach(x=>{const k=x.date+"|"+(x.km==null?"":x.km);if(!m.has(k))m.set(k,{date:x.date,km:x.km,items:[]});m.get(k).items.push(x)});return [...m.values()]}
 const IK=Object.keys(TYPES).filter(t=>!t.startsWith("Autre"));
 function openIv(){
  const v=cur();
@@ -190,10 +191,10 @@ function pdf(){
  const X=[14,34,92,120,150];let y=42;
  const head=()=>{d.setFont("helvetica","bold");d.setFontSize(10);["Date","Type","Km","Coût","Note"].forEach((t,i)=>d.text(t,X[i],y));d.line(14,y+2,196,y+2);y+=8;d.setFont("helvetica","normal")};
  head();
- ents.forEach(x=>{
-  const type=d.splitTextToSize(c(x.type),56),note=d.splitTextToSize(c(x.note),46),h=Math.max(type.length,note.length)*5+2;
+ groups(ents).forEach(g=>{
+  const type=g.items.flatMap(x=>d.splitTextToSize((g.items.length>1?"- ":"")+c(norm(x.type)),56)),cost=g.items.reduce((a,x)=>a+(+x.cost||0),0),note=d.splitTextToSize(c([...new Set(g.items.map(x=>x.note).filter(Boolean))].join(" / ")),46),h=Math.max(type.length,note.length)*5+3;
   if(y+h>285){d.addPage();y=20;head()}
-  d.text(dt(x.date),X[0],y);d.text(type,X[1],y);d.text(x.km!=null?n(x.km):"-",X[2],y);d.text(x.cost?n(x.cost)+" EUR":"-",X[3],y);d.text(note,X[4],y);
+  d.text(dt(g.date),X[0],y);d.text(type,X[1],y);d.text(g.km!=null?n(g.km):"-",X[2],y);d.text(cost?n(cost)+" EUR":"-",X[3],y);d.text(note,X[4],y);
   y+=h;
  });
  d.save("entretien-"+c(v.name).replace(/[^\w-]+/g,"_")+"-"+today()+".pdf");
