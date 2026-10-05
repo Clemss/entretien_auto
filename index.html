@@ -5,74 +5,49 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Entretien">
+<meta name="theme-color" content="#0d6efd">
 <title>Entretien auto</title>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+<script>(function(){var m=matchMedia("(prefers-color-scheme: dark)"),f=function(){document.documentElement.setAttribute("data-bs-theme",m.matches?"dark":"light")};f();if(m.addEventListener)m.addEventListener("change",f)})()</script>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
-:root{--bg:#F1F2F4;--card:#fff;--ink:#1B2430;--mute:#66707D;--line:#DADDE2;--acc:#0F5C7A;--ok:#2E7D4F;--warn:#B86E00;--bad:#B3261E;--onacc:#fff;
-box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media(prefers-color-scheme:dark){:root{--bg:#14181D;--card:#1F252C;--ink:#ECEEF1;--mute:#9AA3AE;--line:#313944;--acc:#5BB6D6;--ok:#6CC38C;--warn:#E5A33D;--bad:#F0807A;--onacc:#0B1218}}
-*{box-sizing:border-box}
-body{margin:0 auto;background:var(--bg);color:var(--ink);font:16px/1.4 Barlow,-apple-system,Helvetica,Arial,sans-serif;max-width:560px;padding:16px 16px 90px}
-h1,h2{font-family:"Barlow Semi Condensed",-apple-system,Helvetica,sans-serif;margin:0}
-h1{font-size:28px}h2{font-size:20px;margin:22px 0 8px}
-button,input,select{font:inherit;color:inherit}
-.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.chips{display:flex;gap:8px;overflow-x:auto;padding:12px 0}
-.chip{white-space:nowrap;border:1.5px solid var(--line);background:var(--card);border-radius:20px;padding:8px 14px;cursor:pointer}
-.chip.on{background:var(--acc);color:var(--onacc);border-color:var(--acc)}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:8px}
-.km{display:flex;justify-content:space-between;align-items:center}
-.km b{font:700 34px "Barlow Semi Condensed",sans-serif}
-.btn{border:0;background:var(--acc);color:var(--onacc);border-radius:10px;padding:11px 16px;font-weight:500;cursor:pointer}
-.btn.ghost{background:transparent;color:var(--acc);border:1.5px solid var(--acc)}
-.btn.del{background:transparent;color:var(--bad);padding:4px 8px}
-.fab{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 4px 14px rgba(0,0,0,.25);padding:14px 22px}
-.st{display:flex;justify-content:space-between;gap:10px;align-items:center}
-.st small,.mute{color:var(--mute)}
-.dot{width:10px;height:10px;border-radius:50%;flex:none;margin-right:10px}
-.ok{background:var(--ok)}.warn{background:var(--warn)}.bad{background:var(--bad)}.none{background:var(--line)}
-.tag{font-weight:500}.tag.warn{color:var(--warn);background:none}.tag.bad{color:var(--bad);background:none}.tag.ok{color:var(--ok);background:none}
-dialog{border:0;border-radius:14px;padding:18px;width:min(92vw,420px);background:var(--card);color:var(--ink)}
-.pick{display:flex;align-items:center;gap:10px;margin:0 0 6px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;color:var(--ink);font-size:16px}
-.pick input[type=checkbox]{width:20px;height:20px;flex:none}
-.pick input[type=number]{width:84px;flex:none;padding:6px}
-.pick span{flex:1}
-.ico{font-size:22px;line-height:1;margin-right:10px;flex:none}
-.sub{display:flex;gap:6px;margin:-2px 0 6px 26px}
-.sub[hidden]{display:none}
-.sub .pick{margin:0;flex:1}
-dialog{max-height:88vh;overflow-y:auto}
-.row input{min-width:0}
-dialog::backdrop{background:rgba(0,0,0,.45)}
-label{display:block;margin:10px 0 4px;color:var(--mute);font-size:14px}
-input,select{width:100%;padding:10px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg)}
-:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
-.empty{text-align:center;color:var(--mute);padding:26px 10px}
-.fold{background:none;border:0;padding:0;font:inherit;color:inherit;display:flex;gap:8px;align-items:center;cursor:pointer}
-#msg{color:var(--bad);font-size:14px;margin-top:10px}
+body{background:var(--bs-tertiary-bg)}
+.ico{font-size:1.5rem;line-height:1;margin-right:.75rem;flex:none}
+.lb-ok{border-left:5px solid var(--bs-success)}
+.lb-warn{border-left:5px solid var(--bs-warning)}
+.lb-bad{border-left:5px solid var(--bs-danger)}
+.lb-none{border-left:5px solid var(--bs-secondary)}
+dialog{border:0;border-radius:1rem;padding:0;width:min(92vw,440px);max-height:88vh;overflow-y:auto;background:var(--bs-body-bg);color:var(--bs-body-color);box-shadow:0 1rem 3rem rgba(0,0,0,.3)}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+.pick{cursor:pointer}
+.sub{display:flex;gap:6px;margin:-2px 0 8px 26px}
+.sub .pick{margin:0!important;flex:1}
 </style>
 </head>
 <body>
-<h1>Entretien auto</h1>
-<div id="main"><div class="empty">Chargement…</div></div>
+<nav class="navbar bg-primary shadow-sm" data-bs-theme="dark" style="padding-top:env(safe-area-inset-top,0px)">
+<div class="container" style="max-width:560px"><span class="navbar-brand mb-0 h1 fs-4">🔧 Entretien auto</span></div>
+</nav>
+<div class="container py-3" style="max-width:560px;padding-bottom:110px">
+<div id="main"><div class="text-center text-body-secondary py-5">Chargement…</div></div>
+</div>
 
-<dialog id="dV"><h2>Nouveau véhicule</h2>
-<label>Nom</label><input id="vn" placeholder="Clio de Marie">
-<label>Kilométrage actuel</label><input id="vk" type="number" inputmode="numeric" placeholder="85000">
-<div class="row" style="margin-top:16px;justify-content:flex-end"><button class="btn ghost" data-close>Annuler</button><button class="btn" id="saveV">Ajouter</button></div></dialog>
+<dialog id="dV"><div class="p-4"><h2 class="h5 mb-3">Nouveau véhicule</h2>
+<label class="form-label">Nom</label><input class="form-control" id="vn" placeholder="Clio de Marie">
+<label class="form-label mt-3">Kilométrage actuel</label><input class="form-control" id="vk" type="number" inputmode="numeric" placeholder="85000">
+<div class="d-flex gap-2 justify-content-end mt-4"><button class="btn btn-outline-secondary" data-close>Annuler</button><button class="btn btn-primary" id="saveV">Ajouter</button></div></div></dialog>
 
-<dialog id="dE"><h2 id="eh">Nouvel entretien</h2>
-<label>Date</label><input id="ed" type="date">
-<label>Kilométrage</label><input id="ek" type="number" inputmode="numeric">
-<label>Entretiens effectués</label><div id="etl"></div>
-<label>Coût total (€)</label><input id="etot" type="number" inputmode="decimal" placeholder="0">
-<label>Note (pour tous)</label><input id="en" placeholder="Garage, pièces...">
-<div class="row" style="margin-top:16px;justify-content:flex-end"><button class="btn ghost" data-close>Annuler</button><button class="btn" id="saveE">Enregistrer</button></div></dialog>
+<dialog id="dE"><div class="p-4"><h2 class="h5 mb-3" id="eh">Nouvel entretien</h2>
+<label class="form-label">Date</label><input class="form-control" id="ed" type="date">
+<label class="form-label mt-3">Kilométrage</label><input class="form-control" id="ek" type="number" inputmode="numeric">
+<label class="form-label mt-3">Entretiens effectués</label><div id="etl"></div>
+<label class="form-label mt-3">Coût total (€)</label><input class="form-control" id="etot" type="number" inputmode="decimal" placeholder="0">
+<label class="form-label mt-3">Note (pour tous)</label><input class="form-control" id="en" placeholder="Garage, pièces...">
+<div class="d-flex gap-2 justify-content-end mt-4"><button class="btn btn-outline-secondary" data-close>Annuler</button><button class="btn btn-primary" id="saveE">Enregistrer</button></div></div></dialog>
 
-<dialog id="dI"><h2>Intervalles d'entretien</h2>
-<p class="mute" style="margin:6px 0 14px">Réglages pour ce véhicule. Mets 0 km et 0 mois pour ne pas suivre un entretien. Le premier seuil atteint déclenche l'alerte.</p>
+<dialog id="dI"><div class="p-4"><h2 class="h5">Intervalles d'entretien</h2>
+<p class="text-body-secondary small mb-3">Réglages pour ce véhicule. Mets 0 km et 0 mois pour ne pas suivre un entretien. Le premier seuil atteint déclenche l'alerte.</p>
 <div id="ivl"></div>
-<div class="row" style="margin-top:16px;justify-content:space-between"><button class="btn del" id="resetI">Réinitialiser</button><div class="row"><button class="btn ghost" data-close>Annuler</button><button class="btn" id="saveI">Enregistrer</button></div></div></dialog>
+<div class="d-flex gap-2 justify-content-between mt-3"><button class="btn btn-outline-danger" id="resetI">Réinitialiser</button><div class="d-flex gap-2"><button class="btn btn-outline-secondary" data-close>Annuler</button><button class="btn btn-primary" id="saveI">Enregistrer</button></div></div></div></dialog>
 
 <input type="file" id="imp" accept="application/json,.json" hidden>
 
@@ -123,6 +98,7 @@ const ALIAS={"Vidange":"Vidange Moteur + Filtre à Huile","Freins":"Plaquettes d
 const norm=t=>ALIAS[t]||t;
 const cfgOf=(v,t)=>(v.iv&&v.iv[t])||TYPES[t];
 const ICONS={"Vidange Moteur + Filtre à Huile":"🛢️","Filtre à Air":"🌬️","Filtre d'Habitacle (Pollens)":"🌸","Filtre à Carburant (Gazole/Essence)":"⛽","Bougies d'allumage":"⚡","Bougies de préchauffage":"🔥","Liquide de Frein (Purge)":"💧","Liquide de Refroidissement":"❄️","Courroie de Distribution + Pompe à eau":"⚙️","Courroie d'Accessoires":"🔗","Plaquettes de Frein":"🛑","Disques de Frein":"💿","Amortisseurs":"🔩","Pneus":"🛞","Géométrie (Parallélisme)":"📐","Vidange Boîte de Vitesses":"🕹️","Remplacement Kit Embrayage":"🦶","Contrôle Technique":"📋"};
+const BS={ok:"success",warn:"warning",bad:"danger",none:"secondary"};
 const iconOf=t=>ICONS[baseOf(t)]||"🔧";
 const baseOf=t=>t.replace(/ \((Avant|Arrière)\)$/,"");
 let S={v:[],e:[]},sel=null,ref=null,unsub=null,user=null;
@@ -152,24 +128,24 @@ function status(v,t){
 
 function render(){
  const m=$("main");
- if(!user){m.innerHTML=`<div class="card" style="margin-top:20px"><p>Connecte-toi pour retrouver tes véhicules sur tous tes appareils.</p><button class="btn" id="login">Se connecter avec Google</button><div id="msg"></div></div>`;return}
+ if(!user){m.innerHTML=`<div class="card shadow-sm mt-4"><div class="card-body text-center p-4"><p class="mb-3">Connecte-toi pour retrouver tes véhicules sur tous tes appareils.</p><button class="btn btn-primary w-100" id="login">Se connecter avec Google</button><div id="msg" class="text-danger small mt-2"></div></div></div>`;return}
  if(!cur()&&S.v[0])pick(S.v[0].id);
- const chips=(ready?"":`<p class="mute" style="margin:8px 0 0">Synchronisation avec le serveur… (modifications bloquées tant que tes données ne sont pas chargées)</p>`)+`<div class="chips">`+S.v.map(v=>`<button class="chip ${v.id===sel?"on":""}" data-sel="${v.id}">${esc(v.name)}</button>`).join("")+`<button class="chip" id="addV">+ Véhicule</button></div>`;
- const foot=`<div class="row" style="margin-top:22px"><button class="btn ghost" id="exp">Exporter</button><button class="btn ghost" id="impb">Importer</button>${cur()?`<button class="btn ghost" id="renV">Renommer</button>`:""}<button class="btn ghost" id="logout">Déconnexion</button></div><p class="mute" style="font-size:13px">Connecté : ${esc(user.email)}</p>`;
+ const chips=(ready?"":`<div class="alert alert-info py-2 small mt-1 mb-0">Synchronisation avec le serveur… (modifications bloquées tant que tes données ne sont pas chargées)</div>`)+`<div class="d-flex gap-2 overflow-auto py-3">`+S.v.map(v=>`<button class="btn btn-sm rounded-pill flex-shrink-0 ${v.id===sel?"btn-primary":"btn-outline-secondary"}" data-sel="${v.id}">${esc(v.name)}</button>`).join("")+`<button class="btn btn-sm btn-outline-primary rounded-pill flex-shrink-0" id="addV">+ Véhicule</button></div>`;
+ const foot=`<div class="d-flex flex-wrap gap-2 mt-4"><button class="btn btn-sm btn-outline-secondary" id="exp">Exporter</button><button class="btn btn-sm btn-outline-secondary" id="impb">Importer</button>${cur()?`<button class="btn btn-sm btn-outline-secondary" id="renV">Renommer</button>`:""}<button class="btn btn-sm btn-outline-secondary" id="logout">Déconnexion</button></div><p class="text-body-secondary small mt-2 mb-0">Connecté : ${esc(user.email)}</p>`;
  const v=cur();
- if(!v){m.innerHTML=chips+`<div class="empty">Aucun véhicule.<br>Ajoute le premier avec « + Véhicule ».</div>`+foot;return}
+ if(!v){m.innerHTML=chips+`<div class="text-center text-body-secondary py-5">Aucun véhicule.<br>Ajoute le premier avec « + Véhicule ».</div>`+foot;return}
  const ents=S.e.filter(x=>x.vid===v.id).sort((a,b)=>b.date.localeCompare(a.date));
  const total=ents.reduce((s,x)=>s+(+x.cost||0),0);
  const rows=Object.keys(TYPES).map(t=>({t,s:status(v,t)})).filter(x=>x.s).sort((a,b)=>["bad","warn","none","ok"].indexOf(a.s.c)-["bad","warn","none","ok"].indexOf(b.s.c));
  m.innerHTML=chips+`
- <div class="card km"><div><span class="mute">Kilométrage</span><br><b>${fmt(v.km)} km</b></div><button class="btn ghost" id="upKm">Mettre à jour</button></div>
- <div class="row" style="justify-content:space-between;margin:22px 0 8px"><h2 style="margin:0"><button class="fold" id="fold" aria-expanded="${open}"><span aria-hidden="true">${open?"▾":"▸"}</span> Suivi</button></h2><button class="btn ghost" id="iv">Intervalles</button></div>
- ${open?rows.map(({t,s})=>`<div class="card st"><div class="row" style="flex-wrap:nowrap"><span class="dot ${s.c}"></span><span class="ico" aria-hidden="true">${iconOf(t)}</span><div><b>${t}</b><br><small>${s.sub}</small></div></div><span class="tag ${s.c}">${s.txt}</span></div>`).join(""):""}
- <div class="row" style="justify-content:space-between;margin:22px 0 8px"><h2 style="margin:0">Historique <small class="mute" style="font-size:15px">· ${fmt(total)} € au total</small></h2>${ents.length?`<button class="btn ghost" id="pdf">Exporter PDF</button>`:""}</div>
- ${ents.length?groups(ents).map(g=>{const cost=g.items.reduce((a,x)=>a+(+x.cost||0),0),notes=[...new Set(g.items.map(x=>x.note).filter(Boolean))].map(esc).join(" · ");return `<div class="card"><div class="st"><div><b>${new Date(g.date).toLocaleDateString("fr-FR")}</b>${g.km!=null?` <small>· ${fmt(g.km)} km</small>`:""}</div><button class="btn ghost" style="padding:5px 12px" data-edit="${g.date}|${g.km==null?"":g.km}">Modifier</button></div>${g.items.map(x=>`<div class="st" style="padding:3px 0"><span>${esc(norm(x.type))}</span><button class="btn del" data-del="${x.id}" aria-label="Supprimer">✕</button></div>`).join("")}${(cost||notes)?`<div class="mute" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px;font-size:14px">${cost?"Total : "+fmt(cost)+" €":""}${cost&&notes?" · ":""}${notes}</div>`:""}</div>`}).join(""):`<div class="empty">Aucun entretien enregistré.</div>`}
- <div style="margin-top:12px"><button class="btn del" id="delV">Supprimer ce véhicule</button></div>
+ <div class="card shadow-sm mb-4"><div class="card-body d-flex justify-content-between align-items-center"><div><div class="text-body-secondary small">Kilométrage</div><div class="fs-2 fw-bold lh-1">${fmt(v.km)} km</div></div><button class="btn btn-outline-primary" id="upKm">Mettre à jour</button></div></div>
+ <div class="d-flex justify-content-between align-items-center mb-2"><h2 class="h5 mb-0"><button class="btn btn-link text-reset text-decoration-none p-0 fw-semibold fs-5" id="fold" aria-expanded="${open}">${open?"▾":"▸"} Suivi</button></h2><button class="btn btn-sm btn-outline-primary" id="iv">Intervalles</button></div>
+ ${open?`<div class="list-group shadow-sm mb-4">${rows.map(({t,s})=>`<div class="list-group-item d-flex justify-content-between align-items-center gap-2 lb-${s.c}"><div class="d-flex align-items-center"><span class="ico" aria-hidden="true">${iconOf(t)}</span><div><div class="fw-semibold">${t}</div><div class="small text-body-secondary">${s.sub}</div></div></div><span class="badge text-bg-${BS[s.c]} flex-shrink-0">${s.txt}</span></div>`).join("")}</div>`:""}
+ <div class="d-flex justify-content-between align-items-center mb-2 mt-4"><h2 class="h5 mb-0">Historique <small class="text-body-secondary fs-6 fw-normal">· ${fmt(total)} € au total</small></h2>${ents.length?`<button class="btn btn-sm btn-outline-primary" id="pdf">Exporter PDF</button>`:""}</div>
+ ${ents.length?groups(ents).map(g=>{const cost=g.items.reduce((a,x)=>a+(+x.cost||0),0),notes=[...new Set(g.items.map(x=>x.note).filter(Boolean))].map(esc).join(" · ");return `<div class="card shadow-sm mb-2"><div class="card-body py-2"><div class="d-flex justify-content-between align-items-center mb-1"><div><span class="fw-semibold">${new Date(g.date).toLocaleDateString("fr-FR")}</span>${g.km!=null?` <small class="text-body-secondary">· ${fmt(g.km)} km</small>`:""}</div><button class="btn btn-sm btn-outline-primary" data-edit="${g.date}|${g.km==null?"":g.km}">Modifier</button></div>${g.items.map(x=>`<div class="d-flex justify-content-between align-items-center py-1"><span>${esc(norm(x.type))}</span><button class="btn btn-sm btn-outline-danger py-0 px-2" data-del="${x.id}" aria-label="Supprimer">✕</button></div>`).join("")}${(cost||notes)?`<div class="text-body-secondary small border-top pt-2 mt-1">${cost?"Total : "+fmt(cost)+" €":""}${cost&&notes?" · ":""}${notes}</div>`:""}</div></div>`}).join(""):`<div class="text-center text-body-secondary py-4">Aucun entretien enregistré.</div>`}
+ <div class="mt-3"><button class="btn btn-sm btn-outline-danger" id="delV">Supprimer ce véhicule</button></div>
  ${foot}
- <button class="btn fab" id="addE">+ Entretien</button>`;
+ <button class="btn btn-primary btn-lg rounded-pill shadow position-fixed start-50 translate-middle-x px-4" style="bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:1030" id="addE">+ Entretien</button>`;
 }
 
 function start(u){
@@ -180,7 +156,7 @@ function start(u){
   const d=snap.data(),fromServer=!snap.metadata.fromCache;
   if(fromServer)ready=true;
   if(snap.exists()||fromServer){S={v:(d&&d.v)||[],e:(d&&d.e)||[]};last=JSON.stringify(S)}
-  render()},err=>{$("main").innerHTML=`<div class="card"><b>Accès refusé</b><p class="mute">${esc(err.message)}</p><p class="mute">Vérifie les règles Firestore.</p></div>`});
+  render()},err=>{$("main").innerHTML=`<div class="alert alert-danger mt-3"><b>Accès refusé</b><p class="mb-1">${esc(err.message)}</p><p class="mb-0">Vérifie les règles Firestore.</p></div>`});
 }
 onAuthStateChanged(auth,start);
 
@@ -205,16 +181,16 @@ function etlHtml(F){
  const v=cur(),ks=Object.keys(TYPES),seen={},ok=t=>{const c=cfgOf(v,t);return c.km||c.m||t.startsWith("Autre")||(F&&F.has(t))};
  return ks.map((t,i)=>{
   const b=baseOf(t);
-  if(b===t)return ok(t)?`<label class="pick"><input type="checkbox" id="ec${i}"><span>${esc(t)}</span></label>`:"";
+  if(b===t)return ok(t)?`<label class="pick d-flex align-items-center gap-2 border rounded-3 px-3 py-2 mb-2"><input type="checkbox" class="form-check-input m-0 flex-shrink-0" style="width:1.25em;height:1.25em" id="ec${i}"><span>${esc(t)}</span></label>`:"";
   if(seen[b])return "";seen[b]=1;
   const subs=ks.map((u,j)=>({u,j})).filter(o=>baseOf(o.u)===b&&ok(o.u));
   if(!subs.length)return "";
-  return `<div class="pickg"><label class="pick"><input type="checkbox" id="eg${i}"><span>${esc(b)}</span></label><div class="sub" id="es${i}" hidden>${subs.map(o=>`<label class="pick"><input type="checkbox" id="ec${o.j}"><span>${/Avant/.test(o.u)?"Avant":"Arrière"}</span></label>`).join("")}</div></div>`}).join("");
+  return `<div class="pickg"><label class="pick d-flex align-items-center gap-2 border rounded-3 px-3 py-2 mb-2"><input type="checkbox" class="form-check-input m-0 flex-shrink-0" style="width:1.25em;height:1.25em" id="eg${i}"><span>${esc(b)}</span></label><div class="sub" id="es${i}" hidden>${subs.map(o=>`<label class="pick d-flex align-items-center gap-2 border rounded-3 px-3 py-2"><input type="checkbox" class="form-check-input m-0 flex-shrink-0" style="width:1.25em;height:1.25em" id="ec${o.j}"><span>${/Avant/.test(o.u)?"Avant":"Arrière"}</span></label>`).join("")}</div></div>`}).join("");
 }
 const IK=Object.keys(TYPES).filter(t=>!t.startsWith("Autre"));
 function openIv(){
  const v=cur();
- $("ivl").innerHTML=IK.map((t,i)=>{const c=cfgOf(v,t);return `<div style="margin-bottom:12px"><b>${esc(t)}</b><div class="row" style="flex-wrap:nowrap;margin-top:4px"><input type="number" inputmode="numeric" min="0" id="ik${i}" value="${c.km}" aria-label="Kilomètres"><span class="mute">km</span><input type="number" inputmode="numeric" min="0" id="im${i}" value="${c.m}" aria-label="Mois"><span class="mute">mois</span></div></div>`}).join("");
+ $("ivl").innerHTML=IK.map((t,i)=>{const c=cfgOf(v,t);return `<div class="mb-3"><div class="fw-semibold mb-1">${iconOf(t)} ${esc(t)}</div><div class="input-group"><input class="form-control" type="number" inputmode="numeric" min="0" id="ik${i}" value="${c.km}" aria-label="Kilomètres"><span class="input-group-text">km</span><input class="form-control" type="number" inputmode="numeric" min="0" id="im${i}" value="${c.m}" aria-label="Mois"><span class="input-group-text">mois</span></div></div>`}).join("");
  $("dI").showModal();
 }
 function saveIv(){
