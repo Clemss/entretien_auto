@@ -94,13 +94,14 @@ const TYPES={
 "Géométrie (Parallélisme)":{km:20000,m:24},
 "Vidange Boîte de Vitesses":{km:60000,m:48},
 "Remplacement Kit Embrayage":{km:120000,m:0},
+"Batterie":{km:0,m:60},
 "Contrôle Technique":{km:0,m:24},
 "Autre (préciser en note)":{km:0,m:0}
 };
 const ALIAS={"Vidange":"Vidange Moteur + Filtre à Huile","Freins":"Plaquettes de Frein","Courroie de distribution":"Courroie de Distribution + Pompe à eau","Contrôle technique":"Contrôle Technique","Autre":"Autre (préciser en note)"};
 const norm=t=>ALIAS[t]||t;
 const cfgOf=(v,t)=>(v.iv&&v.iv[t])||TYPES[t];
-const ICONS={"Vidange Moteur + Filtre à Huile":"🛢️","Filtre à Air":"🌬️","Filtre d'Habitacle (Pollens)":"🌸","Filtre à Carburant (Gazole/Essence)":"⛽","Bougies d'allumage":"⚡","Bougies de préchauffage":"🔥","Liquide de Frein (Purge)":"💧","Liquide de Refroidissement":"❄️","Courroie de Distribution + Pompe à eau":"⚙️","Courroie d'Accessoires":"🔗","Plaquettes de Frein":"🛑","Disques de Frein":"💿","Amortisseurs":"🔩","Pneus":"🛞","Géométrie (Parallélisme)":"📐","Vidange Boîte de Vitesses":"🕹️","Remplacement Kit Embrayage":"🦶","Contrôle Technique":"📋"};
+const ICONS={"Vidange Moteur + Filtre à Huile":"🛢️","Filtre à Air":"🌬️","Filtre d'Habitacle (Pollens)":"🌸","Filtre à Carburant (Gazole/Essence)":"⛽","Bougies d'allumage":"⚡","Bougies de préchauffage":"🔥","Liquide de Frein (Purge)":"💧","Liquide de Refroidissement":"❄️","Courroie de Distribution + Pompe à eau":"⚙️","Courroie d'Accessoires":"🔗","Plaquettes de Frein":"🛑","Disques de Frein":"💿","Amortisseurs":"🔩","Pneus":"🛞","Géométrie (Parallélisme)":"📐","Vidange Boîte de Vitesses":"🕹️","Remplacement Kit Embrayage":"🦶","Batterie":"🔋","Contrôle Technique":"📋"};
 const BS={ok:"success",warn:"warning",bad:"danger",none:"secondary"};
 const iconOf=t=>ICONS[baseOf(t)]||"🔧";
 const baseOf=t=>t.replace(/ \((Avant|Arrière)\)$/,"");
