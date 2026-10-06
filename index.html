@@ -123,11 +123,12 @@ function status(v,t){
  const last=S.e.filter(x=>x.vid===v.id&&(norm(x.type)===t||norm(x.type)===baseOf(t))).sort((a,b)=>b.date.localeCompare(a.date))[0];
  const ck=v.ck&&v.ck[t];
  if(!last&&!ck)return{c:"none",txt:"Jamais fait",sub:"Ajoute le dernier entretien",chk:true};
- const base=(ck&&(!last||ck.date>=last.date))?{date:ck.date,km:ck.km,chk:true}:last;
+ const base=(ck&&(!last||ck.date>=last.date))?{date:ck.date,km:ck.km,nk:ck.nk,nm:ck.nm,chk:true}:last;
+ const eff=base.chk&&(base.nk||base.nm)?{km:base.nk||0,m:base.nm||0}:cfg;
  let left=[],level=0;
  if(base.chk)left.push("vérifié le "+new Date(base.date).toLocaleDateString("fr-FR"));
- if(cfg.km&&base.km!=null){const r=base.km+cfg.km-v.km;left.push(r>=0?"dans "+fmt(r)+" km":"dépassé de "+fmt(-r)+" km");level=Math.max(level,r<0?2:r<cfg.km*.1?1:0)}
- if(cfg.m){const d=new Date(base.date);d.setMonth(d.getMonth()+cfg.m);const days=Math.round((d-new Date())/864e5);
+ if(eff.km&&base.km!=null){const r=base.km+eff.km-v.km;left.push(r>=0?"dans "+fmt(r)+" km":"dépassé de "+fmt(-r)+" km");level=Math.max(level,r<0?2:r<eff.km*.1?1:0)}
+ if(eff.m){const d=new Date(base.date);d.setMonth(d.getMonth()+eff.m);const days=Math.round((d-new Date())/864e5);
   left.push(days>=0?"dans "+(days>60?Math.round(days/30)+" mois":days+" j"):"dépassé de "+(-days>60?Math.round(-days/30)+" mois":-days+" j"));
   level=Math.max(level,days<0?2:days<30?1:0)}
  return{c:["ok","warn","bad"][level],txt:["À jour","Bientôt","En retard"][level],sub:left.join(" · "),chk:level>0};
@@ -238,7 +239,11 @@ document.addEventListener("click",async e=>{
  if(t.id==="iv")openIv();
  if(t.id==="renV"){const n=prompt("Nom du véhicule :",cur().name);if(n!==null&&n.trim()){cur().name=n.trim();save();render()}}
  if(t.dataset.chk!==undefined){const v=cur(),n=Object.keys(TYPES)[+t.dataset.chk];
-  if(v&&n&&confirm("Marquer « "+n+" » comme vérifié aujourd'hui à "+fmt(v.km)+" km ?\nL'échéance repart à zéro à partir de maintenant.")){v.ck=v.ck||{};v.ck[n]={date:today(),km:v.km};save();render()}}
+  if(v&&n){const c=cfgOf(v,n),old=v.ck&&v.ck[n],byKm=!!c.km,def=byKm?((old&&old.nk)||Math.min(10000,c.km)):((old&&old.nm)||6);
+   const a=prompt(byKm?"« "+n+" » vérifié aujourd'hui à "+fmt(v.km)+" km.\nRevérifier dans combien de km ?":"« "+n+" » vérifié aujourd'hui.\nRevérifier dans combien de mois ?",def);
+   if(a!==null){const x=+String(a).replace(/\s/g,"");
+    if(x>0){v.ck=v.ck||{};v.ck[n]=byKm?{date:today(),km:v.km,nk:x}:{date:today(),km:v.km,nm:x};save();render()}
+    else alert("Entre un nombre supérieur à 0.")}}}
  if(t.id==="saveI")saveIv();
  if(t.id==="resetI"&&confirm("Revenir aux intervalles par défaut pour ce véhicule ?")){delete cur().iv;save();$("dI").close();render()}
  if(t.id==="logout")signOut(auth);
