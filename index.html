@@ -121,13 +121,16 @@ const pick=id=>{sel=id;try{localStorage.setItem("sel",id||"")}catch(e){}};
 function status(v,t){
  const cfg=cfgOf(v,t);if(!cfg.km&&!cfg.m)return null;
  const last=S.e.filter(x=>x.vid===v.id&&(norm(x.type)===t||norm(x.type)===baseOf(t))).sort((a,b)=>b.date.localeCompare(a.date))[0];
- if(!last)return{c:"none",txt:"Jamais fait",sub:"Ajoute le dernier entretien"};
+ const ck=v.ck&&v.ck[t];
+ if(!last&&!ck)return{c:"none",txt:"Jamais fait",sub:"Ajoute le dernier entretien",chk:true};
+ const base=(ck&&(!last||ck.date>=last.date))?{date:ck.date,km:ck.km,chk:true}:last;
  let left=[],level=0;
- if(cfg.km&&last.km!=null){const r=last.km+cfg.km-v.km;left.push(r>=0?"dans "+fmt(r)+" km":"dépassé de "+fmt(-r)+" km");level=Math.max(level,r<0?2:r<cfg.km*.1?1:0)}
- if(cfg.m){const d=new Date(last.date);d.setMonth(d.getMonth()+cfg.m);const days=Math.round((d-new Date())/864e5);
+ if(base.chk)left.push("vérifié le "+new Date(base.date).toLocaleDateString("fr-FR"));
+ if(cfg.km&&base.km!=null){const r=base.km+cfg.km-v.km;left.push(r>=0?"dans "+fmt(r)+" km":"dépassé de "+fmt(-r)+" km");level=Math.max(level,r<0?2:r<cfg.km*.1?1:0)}
+ if(cfg.m){const d=new Date(base.date);d.setMonth(d.getMonth()+cfg.m);const days=Math.round((d-new Date())/864e5);
   left.push(days>=0?"dans "+(days>60?Math.round(days/30)+" mois":days+" j"):"dépassé de "+(-days>60?Math.round(-days/30)+" mois":-days+" j"));
   level=Math.max(level,days<0?2:days<30?1:0)}
- return{c:["ok","warn","bad"][level],txt:["À jour","Bientôt","En retard"][level],sub:left.join(" · ")};
+ return{c:["ok","warn","bad"][level],txt:["À jour","Bientôt","En retard"][level],sub:left.join(" · "),chk:level>0};
 }
 
 function render(){
@@ -144,7 +147,7 @@ function render(){
  m.innerHTML=chips+`
  <div class="card shadow-sm mb-4"><div class="card-body d-flex justify-content-between align-items-center"><div><div class="text-body-secondary small">Kilométrage</div><div class="fs-2 fw-bold lh-1">${fmt(v.km)} km</div></div><button class="btn btn-outline-primary" id="upKm">Mettre à jour</button></div></div>
  <div class="d-flex justify-content-between align-items-center mb-2"><h2 class="h5 mb-0"><button class="btn btn-link text-reset text-decoration-none p-0 fw-semibold fs-5" id="fold" aria-expanded="${open}">${open?"▾":"▸"} Suivi</button></h2><button class="btn btn-sm btn-outline-primary" id="iv">Intervalles</button></div>
- ${open?`<div class="list-group shadow-sm mb-4">${rows.map(({t,s})=>`<div class="list-group-item d-flex justify-content-between align-items-center gap-2 lb-${s.c}"><div class="d-flex align-items-center"><span class="ico" aria-hidden="true">${iconOf(t)}</span><div><div class="fw-semibold">${t}</div><div class="small text-body-secondary">${s.sub}</div></div></div><span class="badge text-bg-${BS[s.c]} flex-shrink-0">${s.txt}</span></div>`).join("")}</div>`:""}
+ ${open?`<div class="list-group shadow-sm mb-4">${rows.map(({t,s})=>`<div class="list-group-item d-flex justify-content-between align-items-center gap-2 lb-${s.c}"><div class="d-flex align-items-center"><span class="ico" aria-hidden="true">${iconOf(t)}</span><div><div class="fw-semibold">${t}</div><div class="small text-body-secondary">${s.sub}</div></div></div><div class="text-end flex-shrink-0"><span class="badge text-bg-${BS[s.c]}">${s.txt}</span>${s.chk?`<div class="mt-1"><button class="btn btn-sm btn-outline-secondary py-0 px-2" data-chk="${Object.keys(TYPES).indexOf(t)}">Vérifié ✓</button></div>`:""}</div></div>`).join("")}</div>`:""}
  <div class="d-flex justify-content-between align-items-center mb-2 mt-4"><h2 class="h5 mb-0">Historique <small class="text-body-secondary fs-6 fw-normal">· ${fmt(total)} € au total</small></h2>${ents.length?`<button class="btn btn-sm btn-outline-primary" id="pdf">Exporter PDF</button>`:""}</div>
  ${ents.length?groups(ents).map(g=>{const cost=g.items.reduce((a,x)=>a+(+x.cost||0),0),notes=[...new Set(g.items.map(x=>x.note).filter(Boolean))].map(esc).join(" · ");return `<div class="card shadow-sm mb-2"><div class="card-body py-2"><div class="d-flex justify-content-between align-items-center mb-1"><div><span class="fw-semibold">${new Date(g.date).toLocaleDateString("fr-FR")}</span>${g.km!=null?` <small class="text-body-secondary">· ${fmt(g.km)} km</small>`:""}</div><button class="btn btn-sm btn-outline-primary" data-edit="${g.date}|${g.km==null?"":g.km}">Modifier</button></div>${g.items.map(x=>`<div class="py-1">${esc(norm(x.type))}</div>`).join("")}${(cost||notes)?`<div class="text-body-secondary small border-top pt-2 mt-1">${cost?"Total : "+fmt(cost)+" €":""}${cost&&notes?" · ":""}${notes}</div>`:""}</div></div>`}).join(""):`<div class="text-center text-body-secondary py-4">Aucun entretien enregistré.</div>`}
  <div class="mt-3"><button class="btn btn-sm btn-outline-danger" id="delV">Supprimer ce véhicule</button></div>
@@ -234,6 +237,8 @@ document.addEventListener("click",async e=>{
  if(t.id==="pdf")pdf();
  if(t.id==="iv")openIv();
  if(t.id==="renV"){const n=prompt("Nom du véhicule :",cur().name);if(n!==null&&n.trim()){cur().name=n.trim();save();render()}}
+ if(t.dataset.chk!==undefined){const v=cur(),n=Object.keys(TYPES)[+t.dataset.chk];
+  if(v&&n&&confirm("Marquer « "+n+" » comme vérifié aujourd'hui à "+fmt(v.km)+" km ?\nL'échéance repart à zéro à partir de maintenant.")){v.ck=v.ck||{};v.ck[n]={date:today(),km:v.km};save();render()}}
  if(t.id==="saveI")saveIv();
  if(t.id==="resetI"&&confirm("Revenir aux intervalles par défaut pour ce véhicule ?")){delete cur().iv;save();$("dI").close();render()}
  if(t.id==="logout")signOut(auth);
