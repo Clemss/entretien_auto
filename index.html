@@ -118,6 +118,7 @@ const esc=s=>String(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&g
 const save=()=>{if(!ref)return;if(!ready){alert("Synchronisation avec le serveur en cours : rien n'a été modifié. Vérifie ta connexion et réessaie dans quelques secondes.");try{S=JSON.parse(last)}catch(e){}render();return}setDoc(ref,S).catch(e=>alert("Erreur de sauvegarde : "+e.message))};
 const pick=id=>{sel=id;try{localStorage.setItem("sel",id||"")}catch(e){}};
 
+function legacyCk(v){return Object.entries(v.ck||{}).map(([t,c])=>({id:"legacy:"+t,vid:v.id,type:t,date:c.date,km:c.km,cost:0,note:"",chk:1,nk:c.nk,nm:c.nm}))}
 function ckOf(v,t){return S.e.filter(x=>x.vid===v.id&&x.chk&&x.type===t).sort((a,b)=>b.date.localeCompare(a.date))[0]||(v.ck&&v.ck[t])}
 function status(v,t){
  const cfg=cfgOf(v,t);if(!cfg.km&&!cfg.m)return null;
@@ -143,7 +144,7 @@ function render(){
  const foot=`<div class="d-flex flex-wrap gap-2 mt-4"><button class="btn btn-sm btn-outline-secondary" id="exp">Exporter</button><button class="btn btn-sm btn-outline-secondary" id="impb">Importer</button>${cur()?`<button class="btn btn-sm btn-outline-secondary" id="renV">Renommer</button>`:""}<button class="btn btn-sm btn-outline-secondary" id="logout">Déconnexion</button></div><p class="text-body-secondary small mt-2 mb-0">Connecté : ${esc(user.email)}</p>`;
  const v=cur();
  if(!v){m.innerHTML=chips+`<div class="text-center text-body-secondary py-5">Aucun véhicule.<br>Ajoute le premier avec « + Véhicule ».</div>`+foot;return}
- const ents=S.e.filter(x=>x.vid===v.id).sort((a,b)=>b.date.localeCompare(a.date));
+ const ents=S.e.filter(x=>x.vid===v.id).concat(legacyCk(v)).sort((a,b)=>b.date.localeCompare(a.date));
  const total=ents.reduce((s,x)=>s+(+x.cost||0),0);
  const rows=Object.keys(TYPES).map(t=>({t,s:status(v,t)})).filter(x=>x.s).sort((a,b)=>["bad","warn","none","ok"].indexOf(a.s.c)-["bad","warn","none","ok"].indexOf(b.s.c));
  m.innerHTML=chips+`
@@ -211,7 +212,7 @@ function saveIv(){
 }
 function pdf(){
  const J=window.jspdf&&window.jspdf.jsPDF;if(!J){alert("Module PDF non chargé : vérifie ta connexion et recharge la page.");return}
- const v=cur(),ents=S.e.filter(x=>x.vid===v.id).sort((a,b)=>b.date.localeCompare(a.date));
+ const v=cur(),ents=S.e.filter(x=>x.vid===v.id).concat(legacyCk(v)).sort((a,b)=>b.date.localeCompare(a.date));
  const d=new J({unit:"mm",format:"a4"}),n=x=>String(x).replace(/\B(?=(\d{3})+(?!\d))/g," "),c=s=>String(s||"").replace(/[^\x20-\x7E\u00A0-\u00FF]/g,"?"),dt=s=>s.split("-").reverse().join("/");
  const total=ents.reduce((a,x)=>a+(+x.cost||0),0);
  d.setFont("helvetica","bold");d.setFontSize(18);d.text("Historique d'entretien",14,18);
@@ -245,7 +246,7 @@ document.addEventListener("click",async e=>{
    if(a!==null){const x=+String(a).replace(/\s/g,"");
     if(x>0){S.e.push({id:uid(),vid:v.id,type:n,date:today(),km:v.km,cost:0,note:"",chk:1,...(byKm?{nk:x}:{nm:x})});save();render()}
     else alert("Entre un nombre supérieur à 0.")}}}
- if(t.dataset.delc&&confirm("Supprimer cette vérification ? Le suivi reviendra à l'état précédent.")){const v=cur(),g=groups(S.e.filter(x=>x.vid===v.id)).find(g=>g.k===t.dataset.delc);if(g){const ids=new Set(g.items.map(x=>x.id));S.e=S.e.filter(x=>!ids.has(x.id));save();render()}}
+ if(t.dataset.delc&&confirm("Supprimer cette vérification ? Le suivi reviendra à l'état précédent.")){const v=cur(),g=groups(S.e.filter(x=>x.vid===v.id).concat(legacyCk(v))).find(g=>g.k===t.dataset.delc);if(g){const ids=new Set(g.items.map(x=>x.id));S.e=S.e.filter(x=>!ids.has(x.id));g.items.forEach(x=>{if(String(x.id).startsWith("legacy:")&&v.ck)delete v.ck[x.type]});if(v.ck&&!Object.keys(v.ck).length)delete v.ck;save();render()}}
  if(t.id==="saveI")saveIv();
  if(t.id==="resetI"&&confirm("Revenir aux intervalles par défaut pour ce véhicule ?")){delete cur().iv;save();$("dI").close();render()}
  if(t.id==="logout")signOut(auth);
