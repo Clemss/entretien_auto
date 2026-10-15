@@ -49,6 +49,13 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 
 <dialog id="dI"><div class="p-4"><h2 class="h5">Intervalles d'entretien</h2>
 <p class="text-body-secondary small mb-3">Réglages pour ce véhicule. Mets 0 km et 0 mois pour ne pas suivre un entretien. Le premier seuil atteint déclenche l'alerte.</p>
+<div class="border rounded-3 p-3 mb-3 bg-body-tertiary">
+<div class="fw-semibold mb-2">⚙️ Remplir selon la motorisation</div>
+<div class="d-flex gap-2"><select class="form-select" id="imot" aria-label="Motorisation"><option value="">Motorisation…</option><option value="essence">Essence</option><option value="diesel">Diesel</option><option value="e85">Essence + E85 (éthanol)</option><option value="gpl">Essence + GPL</option><option value="hybride">Hybride (essence)</option><option value="electrique">Électrique</option></select>
+<select class="form-select" id="idist" aria-label="Distribution"><option value="courroie">Courroie</option><option value="chaine">Chaîne</option></select></div>
+<button class="btn btn-outline-primary w-100 mt-2" id="applyM">Récupérer les intervalles</button>
+<div class="small text-body-secondary mt-2">Valeurs moyennes indicatives : le carnet constructeur prime. Rien n'est enregistré tant que tu n'as pas cliqué sur Enregistrer.</div>
+</div>
 <div id="ivl"></div>
 <div class="d-flex gap-2 justify-content-between mt-3"><button class="btn btn-outline-danger" id="resetI">Réinitialiser</button><div class="d-flex gap-2"><button class="btn btn-outline-secondary" data-close>Annuler</button><button class="btn btn-primary" id="saveI">Enregistrer</button></div></div></div></dialog>
 
@@ -199,8 +206,32 @@ function etlHtml(F){
   return `<div class="pickg"><label class="pick d-flex align-items-center gap-2 border rounded-3 px-3 py-2 mb-2"><input type="checkbox" class="form-check-input m-0 flex-shrink-0" style="width:1.25em;height:1.25em" id="eg${i}"><span>${esc(b)}</span></label><div class="sub" id="es${i}" hidden>${subs.map(o=>`<label class="pick d-flex align-items-center gap-2 border rounded-3 px-3 py-2"><input type="checkbox" class="form-check-input m-0 flex-shrink-0" style="width:1.25em;height:1.25em" id="ec${o.j}"><span>${/Avant/.test(o.u)?"Avant":"Arrière"}</span></label>`).join("")}</div></div>`}).join("");
 }
 const IK=Object.keys(TYPES).filter(t=>!t.startsWith("Autre"));
+const DIST="Courroie de Distribution + Pompe à eau";
+const MOT={
+ essence:{"Vidange Moteur + Filtre à Huile":[15000,12],"Filtre à Air":[30000,24],"Filtre à Carburant (Gazole/Essence)":[60000,60],"Bougies d'allumage":[60000,48],"Bougies de préchauffage":[0,0],[DIST]:[120000,72],"Courroie d'Accessoires":[120000,72]},
+ diesel:{"Vidange Moteur + Filtre à Huile":[20000,12],"Filtre à Air":[30000,24],"Filtre à Carburant (Gazole/Essence)":[40000,24],"Bougies d'allumage":[0,0],"Bougies de préchauffage":[100000,0],[DIST]:[150000,72],"Courroie d'Accessoires":[120000,72],"Remplacement Kit Embrayage":[150000,0]},
+ e85:{base:"essence","Vidange Moteur + Filtre à Huile":[10000,12],"Bougies d'allumage":[30000,24],"Filtre à Carburant (Gazole/Essence)":[30000,24]},
+ gpl:{base:"essence","Vidange Moteur + Filtre à Huile":[15000,12],"Bougies d'allumage":[30000,24]},
+ hybride:{base:"essence","Bougies d'allumage":[100000,72],"Liquide de Refroidissement":[100000,60],"Courroie d'Accessoires":[0,0],"Plaquettes de Frein (Avant)":[60000,36],"Plaquettes de Frein (Arrière)":[80000,48],"Disques de Frein (Avant)":[100000,0],"Disques de Frein (Arrière)":[120000,0],"Vidange Boîte de Vitesses":[0,0],"Remplacement Kit Embrayage":[0,0]},
+ electrique:{"Vidange Moteur + Filtre à Huile":[0,0],"Filtre à Air":[0,0],"Filtre d'Habitacle (Pollens)":[20000,12],"Filtre à Carburant (Gazole/Essence)":[0,0],"Bougies d'allumage":[0,0],"Bougies de préchauffage":[0,0],"Liquide de Refroidissement":[150000,96],[DIST]:[0,0],"Courroie d'Accessoires":[0,0],"Plaquettes de Frein (Avant)":[80000,48],"Plaquettes de Frein (Arrière)":[100000,48],"Disques de Frein (Avant)":[120000,0],"Disques de Frein (Arrière)":[150000,0],"Pneus (Avant)":[30000,0],"Pneus (Arrière)":[40000,0],"Vidange Boîte de Vitesses":[0,0],"Remplacement Kit Embrayage":[0,0]}
+};
+function presetOf(f,d){
+ const r={};IK.forEach(t=>r[t]={km:TYPES[t].km,m:TYPES[t].m});
+ const ov=Object.assign({},MOT[f].base?MOT[MOT[f].base]:{},MOT[f]);delete ov.base;
+ for(const k in ov)if(r[k])r[k]={km:ov[k][0],m:ov[k][1]};
+ if(d==="chaine"||f==="electrique")r[DIST]={km:0,m:0};
+ return r;
+}
+function applyMot(){
+ const f=$("imot").value;if(!f){$("imot").focus();return}
+ const p=presetOf(f,$("idist").value);
+ IK.forEach((t,i)=>{$("ik"+i).value=p[t].km;$("im"+i).value=p[t].m});
+ const b=$("applyM");b.textContent="Intervalles remplis ✓ (pense à Enregistrer)";b.classList.replace("btn-outline-primary","btn-success");
+ setTimeout(()=>{b.textContent="Récupérer les intervalles";b.classList.replace("btn-success","btn-outline-primary")},2500);
+}
 function openIv(){
  const v=cur();
+ $("imot").value=(v.mot&&v.mot.f)||"";$("idist").value=(v.mot&&v.mot.d)||"courroie";$("idist").disabled=$("imot").value==="electrique";
  $("ivl").innerHTML=IK.map((t,i)=>{const c=cfgOf(v,t);return `<div class="mb-3"><div class="fw-semibold mb-1">${iconOf(t)} ${esc(t)}</div><div class="input-group"><input class="form-control" type="number" inputmode="numeric" min="0" id="ik${i}" value="${c.km}" aria-label="Kilomètres"><span class="input-group-text">km</span><input class="form-control" type="number" inputmode="numeric" min="0" id="im${i}" value="${c.m}" aria-label="Mois"><span class="input-group-text">mois</span></div></div>`}).join("");
  $("dI").showModal();
 }
@@ -208,6 +239,7 @@ function saveIv(){
  const v=cur(),iv={};
  IK.forEach((t,i)=>{const k=Math.max(0,+$("ik"+i).value||0),m=Math.max(0,+$("im"+i).value||0);if(k!==TYPES[t].km||m!==TYPES[t].m)iv[t]={km:k,m}});
  if(Object.keys(iv).length)v.iv=iv;else delete v.iv;
+ if($("imot").value)v.mot={f:$("imot").value,d:$("idist").value};else delete v.mot;
  save();$("dI").close();render();
 }
 function pdf(){
@@ -248,6 +280,7 @@ document.addEventListener("click",async e=>{
     else alert("Entre un nombre supérieur à 0.")}}}
  if(t.dataset.delc&&confirm("Supprimer cette vérification ? Le suivi reviendra à l'état précédent.")){const v=cur(),g=groups(S.e.filter(x=>x.vid===v.id).concat(legacyCk(v))).find(g=>g.k===t.dataset.delc);if(g){const ids=new Set(g.items.map(x=>x.id));S.e=S.e.filter(x=>!ids.has(x.id));g.items.forEach(x=>{if(String(x.id).startsWith("legacy:")&&v.ck)delete v.ck[x.type]});if(v.ck&&!Object.keys(v.ck).length)delete v.ck;save();render()}}
  if(t.id==="saveI")saveIv();
+ if(t.id==="applyM")applyMot();
  if(t.id==="resetI"&&confirm("Revenir aux intervalles par défaut pour ce véhicule ?")){delete cur().iv;save();$("dI").close();render()}
  if(t.id==="logout")signOut(auth);
  if(t.dataset.sel){pick(t.dataset.sel);render()}
@@ -275,6 +308,7 @@ document.addEventListener("click",async e=>{
  if(t.id==="exp"){const b=new Blob([JSON.stringify(S,null,1)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="entretien-sauvegarde-"+today()+".json";document.body.appendChild(a);a.click();a.remove()}
  if(t.id==="impb")$("imp").click();
 });
+$("imot").addEventListener("change",e=>{const f=e.target.value;$("idist").disabled=f==="electrique";if(f==="hybride")$("idist").value="chaine"});
 $("etl").addEventListener("change",e=>{const id=e.target.id;if(id.startsWith("eg")){const q=$("es"+id.slice(2));q.hidden=!e.target.checked;if(!e.target.checked)q.querySelectorAll("input").forEach(x=>x.checked=false)}});
 $("imp").addEventListener("change",async e=>{
  const f=e.target.files[0];e.target.value="";if(!f)return;
