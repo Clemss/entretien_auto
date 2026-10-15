@@ -50,11 +50,12 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 <dialog id="dI"><div class="p-4"><h2 class="h5">Intervalles d'entretien</h2>
 <p class="text-body-secondary small mb-3">Réglages pour ce véhicule. Mets 0 km et 0 mois pour ne pas suivre un entretien. Le premier seuil atteint déclenche l'alerte.</p>
 <div class="border rounded-3 p-3 mb-3 bg-body-tertiary">
-<div class="fw-semibold mb-2">⚙️ Remplir selon la motorisation</div>
-<div class="d-flex gap-2"><select class="form-select" id="imot" aria-label="Motorisation"><option value="">Motorisation…</option><option value="essence">Essence</option><option value="diesel">Diesel</option><option value="e85">Essence + E85 (éthanol)</option><option value="gpl">Essence + GPL</option><option value="hybride">Hybride (essence)</option><option value="electrique">Électrique</option></select>
-<select class="form-select" id="idist" aria-label="Distribution"><option value="courroie">Courroie</option><option value="chaine">Chaîne</option></select></div>
-<button class="btn btn-outline-primary w-100 mt-2" id="applyM">Récupérer les intervalles</button>
-<div class="small text-body-secondary mt-2">Valeurs moyennes indicatives : le carnet constructeur prime. Rien n'est enregistré tant que tu n'as pas cliqué sur Enregistrer.</div>
+<div class="fw-semibold mb-1">⚙️ Intervalles selon la motorisation</div>
+<div class="small mb-2" id="mcur"></div>
+<input class="form-control" id="mq" type="search" autocomplete="off" placeholder="Ex : 1.4 75 TU, 0.9 TCe, 2.0 HDi 150, Forza 300" aria-label="Rechercher une motorisation">
+<div id="mres" class="list-group mt-2"></div>
+<div id="mai" class="mt-2"></div>
+<div class="small text-body-secondary mt-2">Valeurs courantes des carnets constructeur (conditions normales) : elles varient selon l'année, vérifie ton carnet. Rien n'est enregistré tant que tu n'as pas cliqué sur Enregistrer.</div>
 </div>
 <div id="ivl"></div>
 <div class="d-flex gap-2 justify-content-between mt-3"><button class="btn btn-outline-danger" id="resetI">Réinitialiser</button><div class="d-flex gap-2"><button class="btn btn-outline-secondary" data-close>Annuler</button><button class="btn btn-primary" id="saveI">Enregistrer</button></div></div></div></dialog>
@@ -103,12 +104,15 @@ const TYPES={
 "Remplacement Kit Embrayage":{km:120000,m:0},
 "Batterie":{km:0,m:60},
 "Contrôle Technique":{km:0,m:24},
+"Courroie de Transmission (scooter)":{km:0,m:0},
+"Huile de Transmission Finale":{km:0,m:0},
+"Jeu aux Soupapes":{km:0,m:0},
 "Autre (préciser en note)":{km:0,m:0}
 };
 const ALIAS={"Vidange":"Vidange Moteur + Filtre à Huile","Freins":"Plaquettes de Frein","Courroie de distribution":"Courroie de Distribution + Pompe à eau","Contrôle technique":"Contrôle Technique","Autre":"Autre (préciser en note)"};
 const norm=t=>ALIAS[t]||t;
 const cfgOf=(v,t)=>(v.iv&&v.iv[t])||TYPES[t];
-const ICONS={"Vidange Moteur + Filtre à Huile":"🛢️","Filtre à Air":"🌬️","Filtre d'Habitacle (Pollens)":"🌸","Filtre à Carburant (Gazole/Essence)":"⛽","Bougies d'allumage":"⚡","Bougies de préchauffage":"🔥","Liquide de Frein (Purge)":"💧","Liquide de Refroidissement":"❄️","Courroie de Distribution + Pompe à eau":"⚙️","Courroie d'Accessoires":"🔗","Plaquettes de Frein":"🛑","Disques de Frein":"💿","Amortisseurs":"🔩","Pneus":"🛞","Géométrie (Parallélisme)":"📐","Vidange Boîte de Vitesses":"🕹️","Remplacement Kit Embrayage":"🦶","Batterie":"🔋","Contrôle Technique":"📋"};
+const ICONS={"Vidange Moteur + Filtre à Huile":"🛢️","Filtre à Air":"🌬️","Filtre d'Habitacle (Pollens)":"🌸","Filtre à Carburant (Gazole/Essence)":"⛽","Bougies d'allumage":"⚡","Bougies de préchauffage":"🔥","Liquide de Frein (Purge)":"💧","Liquide de Refroidissement":"❄️","Courroie de Distribution + Pompe à eau":"⚙️","Courroie d'Accessoires":"🔗","Plaquettes de Frein":"🛑","Disques de Frein":"💿","Amortisseurs":"🔩","Pneus":"🛞","Géométrie (Parallélisme)":"📐","Vidange Boîte de Vitesses":"🕹️","Remplacement Kit Embrayage":"🦶","Batterie":"🔋","Contrôle Technique":"📋","Courroie de Transmission (scooter)":"🛵","Huile de Transmission Finale":"🫗","Jeu aux Soupapes":"🔧"};
 const BS={ok:"success",warn:"warning",bad:"danger",none:"secondary"};
 const iconOf=t=>ICONS[baseOf(t)]||"🔧";
 const baseOf=t=>t.replace(/ \((Avant|Arrière)\)$/,"");
@@ -207,31 +211,107 @@ function etlHtml(F){
 }
 const IK=Object.keys(TYPES).filter(t=>!t.startsWith("Autre"));
 const DIST="Courroie de Distribution + Pompe à eau";
-const MOT={
- essence:{"Vidange Moteur + Filtre à Huile":[15000,12],"Filtre à Air":[30000,24],"Filtre à Carburant (Gazole/Essence)":[60000,60],"Bougies d'allumage":[60000,48],"Bougies de préchauffage":[0,0],[DIST]:[120000,72],"Courroie d'Accessoires":[120000,72]},
- diesel:{"Vidange Moteur + Filtre à Huile":[20000,12],"Filtre à Air":[30000,24],"Filtre à Carburant (Gazole/Essence)":[40000,24],"Bougies d'allumage":[0,0],"Bougies de préchauffage":[100000,0],[DIST]:[150000,72],"Courroie d'Accessoires":[120000,72],"Remplacement Kit Embrayage":[150000,0]},
- e85:{base:"essence","Vidange Moteur + Filtre à Huile":[10000,12],"Bougies d'allumage":[30000,24],"Filtre à Carburant (Gazole/Essence)":[30000,24]},
- gpl:{base:"essence","Vidange Moteur + Filtre à Huile":[15000,12],"Bougies d'allumage":[30000,24]},
- hybride:{base:"essence","Bougies d'allumage":[100000,72],"Liquide de Refroidissement":[100000,60],"Courroie d'Accessoires":[0,0],"Plaquettes de Frein (Avant)":[60000,36],"Plaquettes de Frein (Arrière)":[80000,48],"Disques de Frein (Avant)":[100000,0],"Disques de Frein (Arrière)":[120000,0],"Vidange Boîte de Vitesses":[0,0],"Remplacement Kit Embrayage":[0,0]},
- electrique:{"Vidange Moteur + Filtre à Huile":[0,0],"Filtre à Air":[0,0],"Filtre d'Habitacle (Pollens)":[20000,12],"Filtre à Carburant (Gazole/Essence)":[0,0],"Bougies d'allumage":[0,0],"Bougies de préchauffage":[0,0],"Liquide de Refroidissement":[150000,96],[DIST]:[0,0],"Courroie d'Accessoires":[0,0],"Plaquettes de Frein (Avant)":[80000,48],"Plaquettes de Frein (Arrière)":[100000,48],"Disques de Frein (Avant)":[120000,0],"Disques de Frein (Arrière)":[150000,0],"Pneus (Avant)":[30000,0],"Pneus (Arrière)":[40000,0],"Vidange Boîte de Vitesses":[0,0],"Remplacement Kit Embrayage":[0,0]}
-};
-function presetOf(f,d){
+const K={vid:"Vidange Moteur + Filtre à Huile",air:"Filtre à Air",hab:"Filtre d'Habitacle (Pollens)",carb:"Filtre à Carburant (Gazole/Essence)",boug:"Bougies d'allumage",pre:"Bougies de préchauffage",lf:"Liquide de Frein (Purge)",lr:"Liquide de Refroidissement",dist:DIST,acc:"Courroie d'Accessoires",pav:"Plaquettes de Frein (Avant)",par:"Plaquettes de Frein (Arrière)",dav:"Disques de Frein (Avant)",dar:"Disques de Frein (Arrière)",aav:"Amortisseurs (Avant)",aar:"Amortisseurs (Arrière)",nav:"Pneus (Avant)",nar:"Pneus (Arrière)",geo:"Géométrie (Parallélisme)",bv:"Vidange Boîte de Vitesses",emb:"Remplacement Kit Embrayage",ct:"Contrôle Technique",ctr:"Courroie de Transmission (scooter)",hfin:"Huile de Transmission Finale",sou:"Jeu aux Soupapes"};
+// Valeurs courantes des carnets constructeur, conditions d'utilisation normales. [km, mois] ; 0 = pas de remplacement périodique.
+const PSA_ESS={carb:[0,0],pre:[0,0],lf:[0,24],lr:[0,48],hab:[20000,24]};
+const RNO_ESS={carb:[0,0],pre:[0,0],lf:[0,48],lr:[120000,72],hab:[15000,12],air:[30000,48]};
+const ENGINES=[
+ {id:"psa-tu",n:"PSA 1.1 / 1.4 / 1.6 8v TU (TU1, TU3 75 ch, TU5)",d:"Courroie",q:"peugeot citroen psa tu tu1 tu3 tu3a tu3jp tu5 kfv kfw 1.1 1.4 1.6 8v 60 75 90 106 206 207 306 c2 c3 saxo xsara berlingo partner",x:{...PSA_ESS,vid:[20000,12],air:[40000,48],boug:[60000,48],dist:[120000,120],acc:[120000,120]}},
+ {id:"psa-ep",n:"PSA 1.4 VTi 95 / 1.6 VTi 120 (EP3, EP6)",d:"Chaîne",q:"peugeot citroen psa ep ep3 ep6 vti 1.4 1.6 95 120 207 208 308 3008 c3 c4 ds3 ds4",x:{...PSA_ESS,vid:[20000,12],air:[40000,48],boug:[60000,48],dist:[0,0]}},
+ {id:"psa-thp",n:"PSA 1.6 THP 150 à 175 ch (EP6 turbo)",d:"Chaîne",q:"peugeot citroen psa ep6 ep6dt ep6dts ep6cdt thp 1.6 150 155 156 165 175 207 308 3008 5008 c4 picasso ds3 ds4 rcz",x:{...PSA_ESS,vid:[15000,12],air:[40000,48],boug:[40000,48],dist:[0,0]}},
+ {id:"psa-puretech",n:"PSA 1.0 / 1.2 PureTech 68 à 130 ch (EB0, EB2, courroie humide)",d:"Courroie humide",q:"peugeot citroen opel ds psa stellantis puretech eb eb0 eb2 eb2dt eb2dts 1.0 1.2 68 72 75 82 100 110 130 thp vti 108 208 2008 308 3008 c1 c3 c4 cactus",x:{...PSA_ESS,vid:[15000,12],air:[60000,48],boug:[60000,48],dist:[100000,72]}},
+ {id:"psa-dv4",n:"PSA 1.4 HDi 68/70 ch (DV4)",d:"Courroie",q:"peugeot citroen psa hdi dv4 dv4td 1.4 68 70 206 207 c2 c3",x:{vid:[20000,12],air:[40000,48],hab:[20000,24],carb:[60000,48],boug:[0,0],pre:[0,0],lf:[0,24],lr:[0,48],dist:[120000,96]}},
+ {id:"psa-dv6",n:"PSA 1.6 HDi / e-HDi 90 à 115 ch (DV6)",d:"Courroie",q:"peugeot citroen psa ford hdi ehdi e-hdi dv6 dv6ted4 dv6c 1.6 90 92 110 112 115 206 207 307 308 3008 partner berlingo c3 c4 picasso",x:{vid:[20000,12],air:[50000,48],hab:[50000,24],carb:[50000,48],boug:[0,0],pre:[0,0],lf:[0,24],lr:[125000,48],dist:[175000,120],acc:[175000,120]}},
+ {id:"psa-dw10",n:"PSA 2.0 HDi 136 à 163 ch (DW10, ex : C4 Picasso 2.0 HDi 150)",d:"Courroie",q:"peugeot citroen psa hdi dw10 dw10bted4 dw10c 2.0 136 138 140 150 163 307 308 407 508 3008 5008 807 c4 picasso c5 c8 ds4 ds5",x:{vid:[20000,12],air:[40000,48],hab:[20000,24],carb:[60000,48],boug:[0,0],pre:[0,0],lf:[0,24],lr:[240000,120],dist:[180000,120],acc:[180000,120]}},
+ {id:"psa-dw10f",n:"PSA 2.0 BlueHDi 150 / 180 ch (DW10F, AdBlue)",d:"Courroie",q:"peugeot citroen ds psa bluehdi dw10f dw10fc 2.0 150 160 163 180 308 508 3008 5008 c4 picasso c5 aircross ds5 ds7",x:{vid:[20000,12],air:[60000,48],hab:[20000,24],carb:[60000,48],boug:[0,0],pre:[0,0],lf:[0,24],lr:[240000,120],dist:[180000,120],acc:[180000,120]}},
+ {id:"rno-d7f",n:"Renault 1.2 8v 58/60 ch (D7F)",d:"Courroie",q:"renault dacia d7f 1.2 8v 58 60 twingo clio kangoo",x:{...RNO_ESS,lf:[0,24],vid:[15000,12],boug:[60000,48],dist:[120000,60],acc:[120000,60]}},
+ {id:"rno-d4f",n:"Renault 1.2 16v 75 ch (D4F)",d:"Courroie",q:"renault dacia d4f 1.2 16v 73 75 twingo clio modus kangoo sandero",x:{...RNO_ESS,vid:[15000,12],boug:[60000,48],dist:[120000,60],acc:[120000,60]}},
+ {id:"rno-k4m",n:"Renault 1.6 16v 105 à 115 ch (K4M)",d:"Courroie",q:"renault dacia k4m 1.6 16v 105 110 112 115 megane scenic clio laguna kangoo duster",x:{...RNO_ESS,vid:[15000,12],boug:[60000,48],dist:[120000,60],acc:[120000,60]}},
+ {id:"rno-tce09",n:"Renault 0.9 TCe 90 / 1.0 TCe 90-100 (H4Bt, H4D)",d:"Chaîne",q:"renault dacia nissan smart tce h4bt h4d h4dt 0.9 1.0 90 100 clio captur twingo sandero logan duster",x:{...RNO_ESS,vid:[15000,12],boug:[60000,48],dist:[0,0]}},
+ {id:"rno-tce12",n:"Renault 1.2 TCe 115 à 130 ch (H5Ft)",d:"Chaîne",q:"renault dacia nissan tce h5ft h5f 1.2 115 118 120 125 130 clio captur megane scenic kadjar",x:{...RNO_ESS,vid:[15000,12],boug:[40000,48],dist:[0,0]}},
+ {id:"rno-tce13",n:"Renault 1.3 TCe 130 à 160 ch (H5H)",d:"Chaîne",q:"renault dacia nissan mercedes tce h5h h5ht 1.3 130 140 160 megane captur kadjar scenic arkana austral duster",x:{...RNO_ESS,vid:[15000,12],boug:[60000,48],dist:[0,0]}},
+ {id:"rno-k9k",n:"Renault 1.5 dCi depuis 2008 (K9K Euro 5/6)",d:"Courroie",q:"renault dacia nissan dci k9k 1.5 75 85 90 95 105 110 115 clio megane scenic kangoo captur duster sandero logan",x:{vid:[30000,24],air:[30000,48],hab:[20000,12],carb:[40000,48],boug:[0,0],pre:[0,0],lf:[0,48],lr:[120000,72],dist:[160000,72],acc:[160000,72]}},
+ {id:"rno-k9k-old",n:"Renault 1.5 dCi avant 2008 (K9K Euro 3/4)",d:"Courroie",q:"renault dacia nissan dci k9k 1.5 65 68 70 80 82 85 86 100 105 clio megane scenic kangoo modus logan",x:{vid:[20000,12],air:[30000,48],hab:[20000,12],carb:[40000,48],boug:[0,0],pre:[0,0],lf:[0,24],lr:[120000,72],dist:[120000,60],acc:[120000,60]}},
+ {id:"honda-forza300",n:"Honda Forza 300 (NSS300, 2018-2020)",d:"Chaîne (moteur), courroie de transmission",q:"honda forza 300 nss300 nss 300 scooter",x:{vid:[12000,12],air:[24000,0],hab:[0,0],carb:[0,0],boug:[12000,0],pre:[0,0],lf:[0,24],lr:[0,36],dist:[0,0],acc:[0,0],pav:[12000,0],par:[12000,0],dav:[0,0],dar:[0,0],aav:[0,0],aar:[0,0],nav:[0,0],nar:[0,0],geo:[0,0],bv:[0,0],emb:[0,0],ct:[0,0],ctr:[24000,0],hfin:[0,24],sou:[24000,0]}},
+ {id:"gen-ess",n:"Générique : essence (courroie)",d:"Courroie",q:"generique essence courroie",x:{vid:[15000,12],air:[30000,24],carb:[60000,60],boug:[60000,48],pre:[0,0],dist:[120000,72],acc:[120000,72]}},
+ {id:"gen-ess-ch",n:"Générique : essence (chaîne)",d:"Chaîne",q:"generique essence chaine",x:{vid:[15000,12],air:[30000,24],carb:[60000,60],boug:[60000,48],pre:[0,0],dist:[0,0],acc:[120000,72]}},
+ {id:"gen-dsl",n:"Générique : diesel (courroie)",d:"Courroie",q:"generique diesel gazole courroie",x:{vid:[20000,12],air:[30000,24],carb:[40000,24],boug:[0,0],pre:[100000,0],dist:[150000,72],acc:[120000,72],emb:[150000,0]}},
+ {id:"gen-e85",n:"Générique : essence + E85 (éthanol)",d:"Selon moteur",q:"generique e85 ethanol flexfuel boitier superethanol",x:{vid:[10000,12],air:[30000,24],carb:[30000,24],boug:[30000,24],pre:[0,0],dist:[120000,72],acc:[120000,72]}},
+ {id:"gen-hyb",n:"Générique : hybride essence",d:"Chaîne",q:"generique hybride hybrid toyota yaris auris corolla chr e-tech",x:{vid:[15000,12],air:[30000,24],carb:[0,0],boug:[100000,72],pre:[0,0],lr:[100000,60],dist:[0,0],acc:[0,0],pav:[60000,36],par:[80000,48],dav:[100000,0],dar:[120000,0],bv:[0,0],emb:[0,0]}},
+ {id:"gen-ev",n:"Générique : électrique",d:"Aucune",q:"generique electrique ev zoe tesla e-208",x:{vid:[0,0],air:[0,0],hab:[20000,12],carb:[0,0],boug:[0,0],pre:[0,0],lr:[150000,96],dist:[0,0],acc:[0,0],pav:[80000,48],par:[100000,48],dav:[120000,0],dar:[150000,0],nav:[30000,0],nar:[40000,0],bv:[0,0],emb:[0,0]}}
+];
+const fold=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/,/g,".");
+function engPreset(e){
  const r={};IK.forEach(t=>r[t]={km:TYPES[t].km,m:TYPES[t].m});
- const ov=Object.assign({},MOT[f].base?MOT[MOT[f].base]:{},MOT[f]);delete ov.base;
- for(const k in ov)if(r[k])r[k]={km:ov[k][0],m:ov[k][1]};
- if(d==="chaine"||f==="electrique")r[DIST]={km:0,m:0};
+ for(const k in e.x)if(r[K[k]])r[K[k]]={km:e.x[k][0],m:e.x[k][1]};
  return r;
 }
-function applyMot(){
- const f=$("imot").value;if(!f){$("imot").focus();return}
- const p=presetOf(f,$("idist").value);
- IK.forEach((t,i)=>{$("ik"+i).value=p[t].km;$("im"+i).value=p[t].m});
- const b=$("applyM");b.textContent="Intervalles remplis ✓ (pense à Enregistrer)";b.classList.replace("btn-outline-primary","btn-success");
- setTimeout(()=>{b.textContent="Récupérer les intervalles";b.classList.replace("btn-success","btn-outline-primary")},2500);
+function findEng(q){
+ const w=fold(q).split(/[\s/()-]+/).filter(Boolean);if(!w.length)return [];
+ const alpha=w.some(x=>/[a-z]/.test(x));
+ const r=ENGINES.map(e=>{const h=fold(e.n+" "+e.q);const hs=h.split(/[\s/(),:-]+/);let s=0,al=0;w.forEach(x=>{const hit=hs.includes(x)?2:h.includes(x)?1:0;s+=hit;if(hit&&/[a-z]/.test(x))al++});return{e,s:(alpha&&!al)?0:s}}).filter(o=>o.s>0).sort((a,b)=>b.s-a.s);const top=r.length?r[0].s:0;return r.filter(o=>o.s>=top*0.6).slice(0,6).map(o=>o.e);
+}
+let pendMot=null;
+function fillIv(p){IK.forEach((t,i)=>{if(p[t]){$("ik"+i).value=p[t].km;$("im"+i).value=p[t].m}})}
+function showCur(m){$("mcur").innerHTML=m&&m.n?`Moteur : <b>${esc(m.n)}</b>${m.ai?' <span class="badge text-bg-warning">IA, à vérifier</span>':""}`:'<span class="text-body-secondary">Tape le moteur de ce véhicule pour remplir tous les intervalles.</span>'}
+function renderMres(){
+ const q=$("mq").value.trim(),r=findEng(q);
+ $("mres").innerHTML=r.map(e=>`<button type="button" class="list-group-item list-group-item-action" data-eng="${e.id}"><div class="fw-semibold">${esc(e.n)}</div><div class="small text-body-secondary">Distribution : ${esc(e.d)}</div></button>`).join("");
+ $("mai").innerHTML=q.length>=3?`<button type="button" class="btn btn-sm btn-outline-secondary w-100" id="aiB">${r.length?"Pas le bon moteur ? ":""}🤖 Chercher « ${esc(q)} » avec l'IA</button>`:"";
+}
+function applyEng(id){
+ const e=ENGINES.find(x=>x.id===id);if(!e)return;
+ fillIv(engPreset(e));pendMot={id:e.id,n:e.n};showCur(pendMot);$("mq").value="";renderMres();
+ $("mcur").insertAdjacentHTML("beforeend",' <span class="text-success">✓ intervalles remplis, pense à Enregistrer</span>');
+}
+// Recherche IA (Firebase AI Logic / Gemini), chargée seulement à la demande.
+const AI_MODELS=["gemini-3.8-flash","gemini-2.5-flash"];
+const RECAPTCHA_V3_KEY=""; // clé de site reCAPTCHA v3 si App Check est activé pour AI Logic
+let aiP=null;
+function aiInit(){
+ if(!aiP)aiP=(async()=>{
+  const V="https://www.gstatic.com/firebasejs/12.19.0/";
+  const fa=await import(V+"firebase-app.js"),fai=await import(V+"firebase-ai.js");
+  const a=fa.initializeApp(firebaseConfig,"ia");
+  if(RECAPTCHA_V3_KEY){const ac=await import(V+"firebase-app-check.js");ac.initializeAppCheck(a,{provider:new ac.ReCaptchaV3Provider(RECAPTCHA_V3_KEY),isTokenAutoRefreshEnabled:true})}
+  return{ai:fai.getAI(a,{backend:new fai.GoogleAIBackend()}),gm:fai.getGenerativeModel}})();
+ return aiP;
+}
+async function aiAsk(q){
+ const {ai,gm}=await aiInit();
+ const prompt=`Tu es un expert en entretien automobile et deux-roues en France. Motorisation saisie par l'utilisateur : "${q}".
+Identifie précisément le moteur (marque, cylindrée, puissance, code moteur, années) puis donne les intervalles de REMPLACEMENT du plan d'entretien constructeur en conditions d'utilisation normales en France.
+Réponds UNIQUEMENT avec un objet JSON, sans texte autour :
+{"moteur":"nom précis identifié","distribution":"courroie, courroie humide, chaîne ou aucune","items":{"<clé>":[km,mois]},"remarque":"une phrase courte : points d'attention ou incertitudes"}
+Clés autorisées (utilise exactement ces textes) : ${JSON.stringify(IK)}.
+Règles : km et mois sont des entiers ; mets 0 quand il n'y a pas de seuil de ce type ; [0,0] si l'élément n'existe pas sur ce véhicule ou n'a pas de remplacement périodique (ex : distribution par chaîne, bougies sur un diesel, éléments auto sur un scooter). N'invente pas : si tu n'es pas sûr d'une valeur, omets la clé.`;
+ let last;
+ for(const m of AI_MODELS)for(const tools of [[{googleSearch:{}}],undefined]){
+  try{const r=await gm(ai,{model:m,...(tools?{tools}:{})}).generateContent(prompt);
+   const t=r.response.text(),j=JSON.parse(t.slice(t.indexOf("{"),t.lastIndexOf("}")+1));
+   if(!j||typeof j.items!=="object")throw new Error("Réponse illisible");return j}
+  catch(e){last=e;if(/not.?found|404/i.test(String(e&&e.message)))break}
+ }
+ throw last;
+}
+async function aiSearch(){
+ const q=$("mq").value.trim();if(q.length<3)return;
+ $("mai").innerHTML=`<div class="small text-body-secondary py-1"><span class="spinner-border spinner-border-sm me-1"></span>Recherche des intervalles de « ${esc(q)} »…</div>`;
+ try{
+  const j=await aiAsk(q),p={};let n=0;
+  for(const t of IK){const x=j.items[t];if(Array.isArray(x)&&x.length===2){const km=Math.max(0,Math.round(+x[0]||0)),m=Math.max(0,Math.round(+x[1]||0));if(km<=400000&&m<=240){p[t]={km,m};n++}}}
+  if(!n)throw new Error("Aucun intervalle exploitable dans la réponse");
+  fillIv(p);pendMot={n:String(j.moteur||q).slice(0,120),ai:true};showCur(pendMot);
+  $("mres").innerHTML="";
+  $("mai").innerHTML=`<div class="alert alert-warning small py-2 mb-0">🤖 ${n} intervalles remplis pour <b>${esc(pendMot.n)}</b>${j.distribution?" (distribution : "+esc(j.distribution)+")":""}. ${j.remarque?esc(j.remarque)+" ":""}Valeurs générées par IA : vérifie-les avec ton carnet avant d'enregistrer.</div>`;
+ }catch(e){
+  const msg=String(e&&e.message||e);
+  $("mai").innerHTML=`<div class="alert alert-danger small py-2 mb-0">Recherche IA impossible : ${esc(msg)}<br>${/app.?check|attestation|401|403|permission|api.*(not|has not been)|disabled|enable/i.test(msg)?"La recherche IA doit être activée dans la console Firebase (AI Logic → Gemini Developer API), et App Check configuré si la console l'exige.":"Vérifie ta connexion et réessaie."}</div>`;
+ }
 }
 function openIv(){
- const v=cur();
- $("imot").value=(v.mot&&v.mot.f)||"";$("idist").value=(v.mot&&v.mot.d)||"courroie";$("idist").disabled=$("imot").value==="electrique";
+ const v=cur();pendMot=null;
+ $("mq").value="";$("mres").innerHTML="";$("mai").innerHTML="";showCur(v.mot);
  $("ivl").innerHTML=IK.map((t,i)=>{const c=cfgOf(v,t);return `<div class="mb-3"><div class="fw-semibold mb-1">${iconOf(t)} ${esc(t)}</div><div class="input-group"><input class="form-control" type="number" inputmode="numeric" min="0" id="ik${i}" value="${c.km}" aria-label="Kilomètres"><span class="input-group-text">km</span><input class="form-control" type="number" inputmode="numeric" min="0" id="im${i}" value="${c.m}" aria-label="Mois"><span class="input-group-text">mois</span></div></div>`}).join("");
  $("dI").showModal();
 }
@@ -239,7 +319,7 @@ function saveIv(){
  const v=cur(),iv={};
  IK.forEach((t,i)=>{const k=Math.max(0,+$("ik"+i).value||0),m=Math.max(0,+$("im"+i).value||0);if(k!==TYPES[t].km||m!==TYPES[t].m)iv[t]={km:k,m}});
  if(Object.keys(iv).length)v.iv=iv;else delete v.iv;
- if($("imot").value)v.mot={f:$("imot").value,d:$("idist").value};else delete v.mot;
+ if(pendMot)v.mot=pendMot;
  save();$("dI").close();render();
 }
 function pdf(){
@@ -280,7 +360,8 @@ document.addEventListener("click",async e=>{
     else alert("Entre un nombre supérieur à 0.")}}}
  if(t.dataset.delc&&confirm("Supprimer cette vérification ? Le suivi reviendra à l'état précédent.")){const v=cur(),g=groups(S.e.filter(x=>x.vid===v.id).concat(legacyCk(v))).find(g=>g.k===t.dataset.delc);if(g){const ids=new Set(g.items.map(x=>x.id));S.e=S.e.filter(x=>!ids.has(x.id));g.items.forEach(x=>{if(String(x.id).startsWith("legacy:")&&v.ck)delete v.ck[x.type]});if(v.ck&&!Object.keys(v.ck).length)delete v.ck;save();render()}}
  if(t.id==="saveI")saveIv();
- if(t.id==="applyM")applyMot();
+ if(t.closest("[data-eng]"))applyEng(t.closest("[data-eng]").dataset.eng);
+ if(t.id==="aiB")aiSearch();
  if(t.id==="resetI"&&confirm("Revenir aux intervalles par défaut pour ce véhicule ?")){delete cur().iv;save();$("dI").close();render()}
  if(t.id==="logout")signOut(auth);
  if(t.dataset.sel){pick(t.dataset.sel);render()}
@@ -308,7 +389,8 @@ document.addEventListener("click",async e=>{
  if(t.id==="exp"){const b=new Blob([JSON.stringify(S,null,1)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="entretien-sauvegarde-"+today()+".json";document.body.appendChild(a);a.click();a.remove()}
  if(t.id==="impb")$("imp").click();
 });
-$("imot").addEventListener("change",e=>{const f=e.target.value;$("idist").disabled=f==="electrique";if(f==="hybride")$("idist").value="chaine"});
+$("mq").addEventListener("input",renderMres);
+$("mq").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();const b=$("mres").querySelector("[data-eng]");if(b)applyEng(b.dataset.eng);else aiSearch()}});
 $("etl").addEventListener("change",e=>{const id=e.target.id;if(id.startsWith("eg")){const q=$("es"+id.slice(2));q.hidden=!e.target.checked;if(!e.target.checked)q.querySelectorAll("input").forEach(x=>x.checked=false)}});
 $("imp").addEventListener("change",async e=>{
  const f=e.target.files[0];e.target.value="";if(!f)return;
